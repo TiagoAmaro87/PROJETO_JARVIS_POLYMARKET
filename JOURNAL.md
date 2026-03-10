@@ -12,3 +12,7 @@
 - **Conectividade**: JARVIS agora está oficialmente conectado ao CLOB do Polymarket.
 - **Correção**: Ajustada a importação e inicialização do `ClobClient` para compatibilidade com a versão mais recente da SDK (uso de `ApiCreds`).
 - **GPU**: Estabilidade confirmada com PyTorch e GTX 1660.
+- **Master OS**: Iniciada arquitetura `polymarket_master.py` (Cérebro do Sistema).
+- **Pillars**: Estrutura das 4 Caixas (Capitalização em USDC) definida.
+- **Health**: Criado `daily_health_check.py` para monitorar temperatura da GPU (Limite 80°C).
+- **Hard Dependencies**: Instaladas libs `GPUtil`, `psutil` e `py-cpuinfo`.
