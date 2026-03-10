@@ -6,9 +6,8 @@ from dotenv import load_dotenv
 
 # SDK Oficial do Polymarket
 try:
-    from py_clob_client.client import ClobClient
+    from py_clob_client import ClobClient, OrderArgs, ApiCreds
     from py_clob_client.constants import POLYGON
-    from py_clob_client.models import OrderArgs
 except ImportError:
     ClobClient = None
 
@@ -29,26 +28,39 @@ class PolymarketCore:
     """
     def __init__(self):
         self.logger = self.setup_logger()
+        # Chaves via .env
+        self.private_key = os.getenv("POLYMARKET_PRIVATE_KEY")
         self.api_key = os.getenv("POLYMARKET_API_KEY")
         self.api_secret = os.getenv("POLYMARKET_API_SECRET")
         self.passphrase = os.getenv("POLYMARKET_API_PASSPHRASE")
-        self.private_key = os.getenv("POLYMARKET_PRIVATE_KEY")
         
         self.has_gpu = HAS_GPU
         if self.has_gpu:
             self.logger.info(f"GPU {torch.cuda.get_device_name(0)} pronta para Otimização Convexa.")
-        
-        if ClobClient and self.private_key:
-            self.client = ClobClient(
-                host="https://clob.polymarket.com",
-                key=self.private_key,
-                chain_id=POLYGON,
-                signature_type=1 # EOA
-            )
-            self.logger.info("Conectado à CLOB API do Polymarket.")
+
+        if ClobClient and self.private_key and self.api_key and self.api_secret and self.passphrase:
+            try:
+                creds = ApiCreds(
+                    api_key=self.api_key,
+                    api_secret=self.api_secret,
+                    api_passphrase=self.passphrase
+                )
+                self.client = ClobClient(
+                    host="https://clob.polymarket.com",
+                    key=self.private_key,
+                    creds=creds,
+                    chain_id=POLYGON,
+                    signature_type=1 # EOA
+                )
+                self.logger.info("Conectado à CLOB API do Polymarket.")
+            except Exception as e:
+                self.logger.error(f"Erro ao conectar ao CLOB: {e}")
+                self.client = None
         else:
             self.client = None
-            self.logger.warning("Client não inicializado. Verifique as chaves no arquivo .env")
+            if not ClobClient:
+                self.logger.error("Falha ao importar ClobClient. Verifique a instalação da lib py-clob-client.")
+            self.logger.warning("Client não inicializado. Verifique se TODAS as chaves (Key, Secret, Passphrase, PrivateKey) estão no arquivo .env")
 
     def setup_logger(self):
         logging.basicConfig(
@@ -80,15 +92,11 @@ class PolymarketCore:
     def stoikov_market_making(self, mid_price: float, vol: float, time_left: float, inventory: int):
         """
         Modelo de Stoikov adaptado para Polymarket.
-        Ajusta spread bid-ask com base no risco de inventário.
         """
         gamma = 0.1 # Aversão ao risco
         k = 1.5 # Liquidez do mercado
         
-        # Preço de reserva
         reservation_price = mid_price - (inventory * gamma * (vol**2) * time_left)
-        
-        # Spread ótimo
         spread = (gamma * (vol**2) * time_left) + (2/gamma) * torch.log(torch.tensor(1 + gamma/k))
         
         bid = reservation_price - (spread / 2)
@@ -98,17 +106,16 @@ class PolymarketCore:
 
     def apply_kelly_criterion(self, win_prob: float, odds: float):
         """
-        Kelly Criterion Dinâmico. p: prob de vitória, b: odds decimais (ex: 2.0 para 50/50).
+        Kelly Criterion Dinâmico.
         """
         b = odds - 1
         if b <= 0: return 0.0
         
         f = (win_prob * (b + 1) - 1) / b
-        return float(torch.clamp(torch.tensor(f * 0.05), 0.0, 0.05)) # Limitado a 5%
+        return float(torch.clamp(torch.tensor(f * 0.05), 0.0, 0.05))
 
     def execute_arbitrage(self, market: Dict):
         self.logger.info(f"Executando Arbitragem em {market['name']}")
-        # Ordem casada YES/NO
 
 # Inicialização e Teste
 if __name__ == "__main__":
@@ -119,5 +126,5 @@ if __name__ == "__main__":
     core.logger.info(f"Stoikov MM -> Bid: {bid:.4f}, Ask: {ask:.4f}")
     
     # Teste Kelly
-    size = core.apply_kelly_criterion(0.6, 2.0) # 60% prob, 2.0 odds
+    size = core.apply_kelly_criterion(0.6, 2.0)
     core.logger.info(f"Kelly Risk Manager -> Size: {size:.2%}")
