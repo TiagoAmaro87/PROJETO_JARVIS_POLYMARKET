@@ -16,3 +16,13 @@
 - **Pillars**: Estrutura das 4 Caixas (Capitalização em USDC) definida.
 - **Health**: Criado `daily_health_check.py` para monitorar temperatura da GPU (Limite 80°C).
 - **Hard Dependencies**: Instaladas libs `GPUtil`, `psutil` e `py-cpuinfo`.
+
+## 2026-03-11 (Sessão Atual)
+- **Infraestrutura**: Identificada ausência de Python. Instalado **Python 3.12.10** diretamente em `E:\Python`.
+- **Ambiente**: Configurado PATH do Windows (User) para incluir `E:\Python` e `E:\Python\Scripts`.
+- **Hardware**: Instalado **CUDA Toolkit (PyTorch cu121)**. Confirmado suporte total à **GTX 1660** (CUDA Ready: True).
+- **Dependências**: Instaladas bibliotecas críticas via pip (`torch`, `py-clob-client`, `python-dotenv`, `GPUtil`, `psutil`).
+- **Execução**: Modificado `polymarket_master.py` para habilitar `run_pillars()` em modo de monitoramento contínuo.
+- **Dashboard**: Implementada atualização em tempo real (1s) do Dashboard de Saúde e Financeiro.
+- **Segurança**: Pilares de negociação real mantidos comentados por ordem do usuário para fase de testes.
+- **Clonagem**: Todos os 8 repositórios do usuário (Públicos e Privados) clonados com sucesso para `E:\GitHub`.

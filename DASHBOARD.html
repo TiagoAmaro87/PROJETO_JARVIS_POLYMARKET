@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS POLYMARKET | OS DASHBOARD</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050a0f;
+            --card-bg: rgba(16, 24, 39, 0.8);
+            --accent-blue: #00d2ff;
+            --accent-green: #00ff88;
+            --accent-red: #ff3366;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(0, 210, 255, 0.05) 0%, transparent 70%),
+                linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)),
+                url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 210, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            letter-spacing: 4px;
+            color: var(--accent-blue);
+            text-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 1rem;
+            border-radius: 9999px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            animation: pulse 2s infinite;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-blue);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-blue);
+        }
+
+        .card-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .caixa-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .caixa-name {
+            font-weight: 600;
+        }
+
+        .caixa-balance {
+            color: var(--accent-green);
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .pilar-tag {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            display: block;
+        }
+
+        .log-terminal {
+            background: #000;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            height: 200px;
+            overflow-y: auto;
+            color: #ccc;
+            border: 1px solid #333;
+        }
+
+        .log-line {
+            margin-bottom: 0.25rem;
+            border-left: 2px solid #555;
+            padding-left: 0.5rem;
+        }
+
+        .log-info { color: var(--accent-blue); }
+        .log-warn { color: #facc15; }
+        .log-crit { color: var(--accent-red); }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+            70% { opacity: 1; box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+            100% { opacity: 0.6; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        progress {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        progress::-webkit-progress-bar {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        progress::-webkit-progress-value {
+            background: linear-gradient(to right, #00d2ff, #00ff88);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>JARVIS POLYMARKET OS</h1>
+        <div class="status-badge" id="bot-status">SISTEMA ONLINE - MODO TESTE</div>
+    </header>
+
+    <main>
+        <!-- CARD 01: HARDWARE STATUS -->
+        <div class="card">
+            <div class="card-title">⚙️ HARDWARE MONITOR</div>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-label">GPU TEMP</div>
+                    <div class="stat-value" id="gpu-temp">36.0°C</div>
+                    <progress id="temp-bar" value="36" max="80"></progress>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">GPU LOAD</div>
+                    <div class="stat-value" id="gpu-load">6%</div>
+                    <progress id="load-bar" value="6" max="100"></progress>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">CPU LOAD</div>
+                    <div class="stat-value" id="cpu-load">22.9%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">RAM USED</div>
+                    <div class="stat-value" id="ram-usage">68.0%</div>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-secondary)">
+                MOTOR: NVIDIA GeForce GTX 1660 | CUDA v12.1 Ready
+            </div>
+        </div>
+
+        <!-- CARD 02: AS 4 CAIXAS -->
+        <div class="card">
+            <div class="card-title">💰 GESTÃO DE CAPITAL</div>
+            <div class="caixa-item">
+                <div>
+                    <span class="caixa-name">CAIXA_01</span>
+                    <span class="pilar-tag">Arbitragem de Soma Zero</span>
+                </div>
+                <div class="caixa-balance">$500.00</div>
+            </div>
+            <div class="caixa-item">
+                <div>
+                    <span class="caixa-name">CAIXA_02</span>
+                    <span class="pilar-tag">Market Making (Stoikov)</span>
+                </div>
+                <div class="caixa-balance">$500.00</div>
+            </div>
+            <div class="caixa-item">
+                <div>
+                    <span class="caixa-name">CAIXA_03</span>
+                    <span class="pilar-tag">NLP / Sentiment Analysis</span>
+                </div>
+                <div class="caixa-balance">$500.00</div>
+            </div>
+            <div class="caixa-item">
+                <div>
+                    <span class="caixa-name">CAIXA_04</span>
+                    <span class="pilar-tag">Sniper (Cisne Negro)</span>
+                </div>
+                <div class="caixa-balance">$0.00</div>
+            </div>
+        </div>
+
+        <!-- CARD 03: LIVE LOGS -->
+        <div class="card" style="grid-column: span 1.5;">
+            <div class="card-title">📡 LIVE SYSTEM LOGS</div>
+            <div class="log-terminal" id="terminal">
+                <div class="log-line"><span class="log-info">[INIT]</span> JARVIS_POLYMARKET_OS v1.0-SNIPER-RELEASE Inicializado.</div>
+                <div class="log-line"><span class="log-info">[CUDA]</span> GTX 1660 mapeada para processamento intensivo.</div>
+                <div class="log-line"><span class="log-info">[API]</span> Conectado com sucesso à CLOB API (Polymarket).</div>
+                <div class="log-line"><span class="log-warn">[TEST]</span> Modo de Dinheiro Real: DESATIVADO.</div>
+                <div class="log-line"><span class="log-info">[SCAN]</span> Iniciando monitoramento de hardware e mercados...</div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 PROJETO JARVIS - Mestre do Mercado Polymarket</p>
+    </footer>
+
+    <script>
+        // Simulação dinâmica para demonstração do dashboard vivo
+        setInterval(() => {
+            const temp = (35 + Math.random() * 3).toFixed(1);
+            const load = (5 + Math.random() * 10).toFixed(0);
+            
+            document.getElementById('gpu-temp').innerText = temp + '°C';
+            document.getElementById('gpu-load').innerText = load + '%';
+            document.getElementById('temp-bar').value = temp;
+            document.getElementById('load-bar').value = load;
+
+            // Simular logs
+            const terminal = document.getElementById('terminal');
+            const lines = [
+                '<span class="log-info">[SCAN]</span> Analisando correlação em GPU... Completo.',
+                '<span class="log-info">[DATA]</span> L2 OrderBook atualizado via WebSocket.',
+                '<span class="log-info">[HEALTH]</span> Verificação de sistema concluída. Status: OK.'
+            ];
+            
+            if (Math.random() > 0.7) {
+                const newLine = document.createElement('div');
+                newLine.className = 'log-line';
+                newLine.innerHTML = lines[Math.floor(Math.random() * lines.length)];
+                terminal.appendChild(newLine);
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

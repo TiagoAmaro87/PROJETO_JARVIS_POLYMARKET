@@ -2,75 +2,46 @@ import os
 import psutil
 import logging
 import time
+import json
 from typing import Dict
 
-try:
-    import GPUtil
-    HAS_GPUTIL = True
-except ImportError:
-    HAS_GPUTIL = False
-
 class DailyHealthCheck:
-    """
-    Monitor de Saúde do Hardware e Status do Sistema JARVIS.
-    Focado na preservação da GTX 1660.
-    """
-    def __init__(self, temp_limit: float = 80.0):
+    def __init__(self, hardware_engine, temp_limit: float = 80.0, dd_limit: float = 0.12):
+        self.hw_engine = hardware_engine
         self.temp_limit = temp_limit
+        self.dd_limit = dd_limit
         self.logger = logging.getLogger("JarvisHealth")
-        self.cool_down_active = False
 
-    def check_hardware(self) -> Dict:
-        status = {
-            "gpu_temp": 0.0,
-            "gpu_load": 0.0,
-            "vram_used": 0.0,
-            "cpu_load": psutil.cpu_percent(),
-            "ram_used": psutil.virtual_memory().percent,
-            "safe_mode": False
+    def check_system_viability(self, current_balance: float, latency: Dict) -> bool:
+        hw = self.hw_engine.get_gpu_status()
+        if hw["temp"] >= self.temp_limit:
+            self.logger.critical("[CRITICAL] GPU overheat detected!")
+            return False
+        return True
+
+    def export_dashboard_data(self, caixas: Dict, latency_metrics: Dict, mode: str = "LEAN"):
+        hw = self.hw_engine.get_gpu_status()
+        report = {
+            "hardware": {
+                "gpu_temp": hw["temp"],
+                "gpu_load": hw["load"],
+                "cpu_load": psutil.cpu_percent(),
+                "ram_used": psutil.virtual_memory().percent,
+                "safe_mode": True
+            },
+            "finance": caixas,
+            "latency": latency_metrics,
+            "timestamp": time.time(),
+            "status": mode # SIMULATION ou LEAN
         }
+        try:
+            p = r"c:\Users\tiago\.gemini\antigravity\playground\pyro-nebula\public\live_status.json"
+            with open(p, "w") as f:
+                json.dump(report, f, indent=4)
+        except:
+            pass
 
-        if HAS_GPUTIL:
-            gpus = GPUtil.getGPUs()
-            if gpus:
-                gpu = gpus[0]
-                status["gpu_temp"] = gpu.temperature
-                status["gpu_load"] = gpu.load * 100
-                status["vram_used"] = gpu.memoryUsed
-                
-                if gpu.temperature > self.temp_limit:
-                    self.logger.warning(f"TEMPERATURA GPU EXCEDIDA: {gpu.temperature}°C. Ativando Cool Down.")
-                    status["safe_mode"] = True
-                    self.cool_down_active = True
-                else:
-                    self.cool_down_active = False
-        
-        return status
-
-    def daily_report(self, finance_data: Dict):
-        """
-        Exibe o Dashboard de Saúde e ROI.
-        """
-        hw = self.check_hardware()
-        print("\n" + "="*40)
-        print("   🤖 JARVIS_POLYMARKET DAILY HEALTH   ")
-        print("="*40)
-        print(f"🌡️  GPU Temp: {hw['gpu_temp']}°C (Limit: {self.temp_limit}°C)")
-        print(f"📊 GPU Load: {hw['gpu_load']:.1f}% | VRAM: {hw['vram_used']}MB")
-        print(f"💻 CPU: {hw['cpu_load']}% | RAM: {hw['ram_used']}%")
-        print("-"*40)
-        print("💰 FINANCEIRO (AS 4 CAIXAS)")
-        for caixa, info in finance_data.items():
-            print(f"- {caixa}: ${info['balance']:.2f} | ROI: {info['roi']:.2%}")
-        print("="*40 + "\n")
-
-if __name__ == "__main__":
-    # Teste isolado
-    checker = DailyHealthCheck()
-    dummy_finance = {
-        "Caixa 01 (Arb)": {"balance": 500.0, "roi": 0.02},
-        "Caixa 02 (MM)": {"balance": 500.0, "roi": 0.015},
-        "Caixa 03 (Sentiment)": {"balance": 500.0, "roi": -0.005},
-        "Caixa 04 (Sniper)": {"balance": 0.0, "roi": 0.0}
-    }
-    checker.daily_report(dummy_finance)
+    def daily_report(self, caixas: Dict, latency: Dict):
+        hw = self.hw_engine.get_gpu_status()
+        # Limpo de emojis para estabilidade no console do Windows
+        print(f"[PAPER_TRADING] GPU: {hw['temp']}C | RAM: {psutil.virtual_memory().percent}% | COMP: {latency['compute']:.1f}ms")

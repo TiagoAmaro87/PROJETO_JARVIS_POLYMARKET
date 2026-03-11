@@ -1,0 +1,38 @@
+{
+    "hardware": {
+        "gpu_temp": 36.0,
+        "gpu_load": 2.0,
+        "vram_used": 1028.0,
+        "cpu_load": 77.8,
+        "ram_used": 91.0,
+        "safe_mode": false
+    },
+    "finance": {
+        "CAIXA_01": {
+            "pilar": "Arbitragem",
+            "balance": 500.0,
+            "risk": "Quase Zero",
+            "roi": 0.0
+        },
+        "CAIXA_02": {
+            "pilar": "Market Making",
+            "balance": 500.0,
+            "risk": "Baixo/M\u00e9dio",
+            "roi": 0.0
+        },
+        "CAIXA_03": {
+            "pilar": "Sentimento",
+            "balance": 500.0,
+            "risk": "M\u00e9dio/Alto",
+            "roi": 0.0
+        },
+        "CAIXA_04": {
+            "pilar": "Sniper (Cisne Negro)",
+            "balance": 0.0,
+            "risk": "Estrat\u00e9gico",
+            "roi": 0.0
+        }
+    },
+    "timestamp": 1773204282.9299474,
+    "status": "ONLINE"
+}
