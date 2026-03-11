@@ -4,6 +4,8 @@ import time
 import os
 import gc
 import random
+import sys
+import io
 from dotenv import load_dotenv
 
 from hardware_engine import HardwareEngine
@@ -12,17 +14,21 @@ from polymarket_async_core import PolymarketAsyncCore
 from pillars import TradingPillars
 from daily_health_check import DailyHealthCheck
 
+import json
+
 load_dotenv()
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # --- CONFIGURAÇÃO GLOBAL ---
 PAPER_TRADING = True 
-TICK_RATE = 0.2 # Modo Turbo: 5 varreduras por segundo (5Hz)
+TICK_RATE = 0.2 # Modo Turbo: 5Hz
+STATE_FILE = "jarvis_state.json"
 
 class JarvisPolymarketStable:
     def __init__(self):
+        self.os_version = "v2.1-ULTIMATE"
         self.setup_logging()
         self.logger = logging.getLogger("JarvisMaster")
-        self.os_version = "v2.0-POLY-STABLE"
         
         self.hw = HardwareEngine()
         self.brain = JarvisBrain()
@@ -30,15 +36,53 @@ class JarvisPolymarketStable:
         self.pillars = TradingPillars(self.brain)
         self.telemetry = DailyHealthCheck(self.hw)
         
-        # Gestão de Capital Segregada - 4 Caixas ($500 em cada das 3 primeiras)
+        # Gestão de Capital - 4 Caixas
         self.caixas = {
-            "CAIXA_01_ARB": {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "110251828161543119357013227499774714771527179764174739487025581227481937033858", "pair_id": "65176388692130651396848427090788038285140833850265294793449655516920659740141"},
+            "CAIXA_01_ARB": {
+                "cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, 
+                "active_index": 0,
+                "targets": [
+                    {"yes": "110251828161543119357013227499774714771527179764174739487025581227481937033858", "no": "65176388692130651396848427090788038285140833850265294793449655516920659740141"}, # MicroStrategy
+                    {"yes": "21742457389871910906232367150745558299797034870034458925206969572242502127271", "no": "21742457389871910906232367150745558299797034870034458925206969572242502127271"}, # Bitcoin
+                    {"yes": "eth_yes_mock", "no": "eth_no_mock"} # Placeholder ativos secundários
+                ]
+            },
             "CAIXA_02_MM":  {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "110251828161543119357013227499774714771527179764174739487025581227481937033858"},
             "CAIXA_03_SENT": {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "110251828161543119357013227499774714771527179764174739487025581227481937033858"},
             "CAIXA_04_SNI":  {"cash": 40.0,  "inventory": 0.0, "start": 40.0,  "balance": 40.0,  "roi": 0.0, "token_id": "sniper_active"}
         }
-        self.total_profit_tax = 0.0
+        self.load_state() 
         self.is_running = False
+
+    def load_state(self):
+        """Carrega o lucro e o estoque salvos anteriormente."""
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, "r") as f:
+                    saved_data = json.load(f)
+                    # Mescla os dados salvos com a estrutura básica (mantendo IDs e alvos)
+                    for k, v in saved_data.items():
+                        if k in self.caixas:
+                            self.caixas[k].update(v)
+                self.logger.info("[RESTORE] Memória carregada: Retomando lucros anteriores.")
+            except Exception as e:
+                self.logger.error(f"[RESTORE] Erro ao carregar memória: {e}")
+
+    def save_state(self):
+        """Salva o progresso financeiro no disco."""
+        try:
+            # Salva apenas o essencial para não corromper IDs
+            persist = {k: {
+                "cash": v["cash"], 
+                "inventory": v["inventory"], 
+                "balance": v["balance"], 
+                "roi": v["roi"], 
+                "start": v["start"]
+            } for k, v in self.caixas.items()}
+            with open(STATE_FILE, "w") as f:
+                json.dump(persist, f, indent=4)
+        except Exception as e:
+            self.logger.error(f"[SAVE] Erro ao salvar estado: {e}")
 
     def setup_logging(self):
         logging.basicConfig(
@@ -48,157 +92,122 @@ class JarvisPolymarketStable:
         )
 
     async def run_market_tick(self, name, data):
-        """Monitora e opera em cada módulo separadamente."""
         start_compute = time.time()
-        
-        # O Sniper só opera se tiver dinheiro (lucro das outras)
-        if name == "CAIXA_04_SNI" and data["cash"] < 2.0:
-            return
+        current_price = 0.5
 
-        # Preço Real do Polymarket
-        current_price = await self.core.get_real_price(data["token_id"])
-        if current_price <= 0: current_price = 0.01
-
-        # --- LÓGICA DE OPERAÇÃO ---
-        
-        # Arbitragem: Compra se YES + NO < 0.9995 (Aproveitando micro-ineficiências)
+        # --- CAIXA 01: ARBITRAGEM (MODO HUNTER) ---
         if name == "CAIXA_01_ARB":
-            pair_price = await self.core.get_real_price(data["pair_id"])
-            soma_tokens = current_price + pair_price
+            target = data["targets"][data["active_index"]]
+            y_p = await self.core.get_real_price(target["yes"])
+            n_p = await self.core.get_real_price(target["no"])
+            soma = y_p + n_p
+            current_price = y_p
             
-            # Log constante para o usuário ver o trabalho do robô
-            if random.random() > 0.90: 
-                self.logger.info(f"[{name}] SCANNER: SOMA={soma_tokens:.4f} | ALVO < 0.9995")
+            if random.random() > 0.95:
+                self.logger.info(f"[{name}] ESCANEANDO MERCADO #{data['active_index']} | SOMA: {soma:.4f}")
 
-            if soma_tokens < 0.9995:
-                # OTIMIZAÇÃO: Compra CASADA Turbo
-                qty = 40.0 
-                cost_yes = (current_price * qty) * 1.0005
-                cost_no = (pair_price * qty) * 1.0005
-                total_cost = cost_yes + cost_no
-                
-                if data["cash"] >= total_cost:
-                    res_yes = await self.core.execute_order(name, "buy", current_price, qty, data["token_id"])
-                    res_no = await self.core.execute_order(name, "buy", pair_price, qty, data["pair_id"])
-                    
-                    data["cash"] = float(data["cash"] - (res_yes["cost"] + res_no["cost"]))
-                    data["inventory"] = float(data["inventory"] + qty) 
-                    
-                    self.logger.info(f"[{name}] 🎯 MICRO-ARB EXECUTADA! +${(qty - total_cost):.3f}")
+            if soma < 0.9995:
+                qty = 40.0
+                cost = soma * qty * 1.001
+                if data["cash"] >= cost:
+                    await self.core.execute_order(name, "buy", y_p, qty, target["yes"])
+                    await self.core.execute_order(name, "buy", n_p, qty, target["no"])
+                    data["cash"] = float(data["cash"] - cost)
+                    data["inventory"] = float(data["inventory"] + qty)
+                    self.logger.info(f"[{name}] 🎯 ARBITRAGEM GLOBAL DETECTADA!")
 
-        # Módulo 2: Market Making (O motor de fluxo)
+            data["active_index"] = (data["active_index"] + 1) % len(data["targets"])
+
+        # --- CAIXA 02: MARKET MAKING ---
         elif name == "CAIXA_02_MM":
-            inv = float(data.get("inventory", 0))
-            cash = float(data.get("cash", 0))
-            if inv < 40:
+            current_price = await self.core.get_real_price(data["token_id"])
+            inv, cash = data["inventory"], data["cash"]
+            if inv < 50:
                 buy_p = current_price * 0.998
                 res = await self.core.execute_order(name, "buy", buy_p, 10.0, data["token_id"])
                 if cash >= res["cost"]:
-                    data["cash"] = float(cash - res["cost"])
-                    data["inventory"] = float(inv + res["amount"])
+                    data["cash"] -= res["cost"]
+                    data["inventory"] += res["amount"]
                     self.logger.info(f"[{name}] MM COMPRA")
-            elif inv >= 10.0:
-                sell_p = current_price * 1.012 # 1.2% de lucro nominal
+            elif inv >= 10:
+                sell_p = current_price * 1.012
                 res = await self.core.execute_order(name, "sell", sell_p, 10.0, data["token_id"])
-                data["cash"] = float(cash + res["cost"])
-                data["inventory"] = float(inv - res["amount"])
+                data["cash"] += res["cost"]
+                data["inventory"] -= res["amount"]
                 self.logger.info(f"[{name}] MM VENDA (LUCRO)")
 
-        # Módulo 3: SENTIMENTO (Momentum - Ativo e Agressivo)
+        # --- CAIXA 03: SENTIMENTO ---
         elif name == "CAIXA_03_SENT":
-            inv = float(data.get("inventory", 0))
-            cash = float(data.get("cash", 0))
-            if random.random() > 0.5: # 50% de chance de atuação por tick
-                 if inv < 100:
-                    # Compra "Market" agressiva
-                    res = await self.core.execute_order(name, "buy", current_price * 1.001, 20.0, data["token_id"])
+            current_price = await self.core.get_real_price(data["token_id"])
+            inv, cash = data["inventory"], data["cash"]
+            if random.random() > 0.6: # Agressivo
+                if inv < 80:
+                    res = await self.core.execute_order(name, "buy", current_price * 1.001, 15.0, data["token_id"])
                     if cash >= res["cost"]:
-                        data["cash"] = float(cash - res["cost"])
-                        data["inventory"] = float(inv + res["amount"])
-                        self.logger.info(f"[{name}] MOMENTUM: ENTRADA AGRESSIVA")
-                 elif inv >= 20.0:
-                    # Alvo de lucro curto e certeiro
-                    res = await self.core.execute_order(name, "sell", current_price * 1.008, 20.0, data["token_id"])
-                    data["cash"] = float(cash + res["cost"])
-                    data["inventory"] = float(inv - res["amount"])
-                    self.logger.info(f"[{name}] MOMENTUM: LUCRO NO BOLSO")
+                        data["cash"] -= res["cost"]
+                        data["inventory"] += res["amount"]
+                        self.logger.info(f"[{name}] SENTIMENTO: ENTRADA")
+                elif inv >= 15:
+                    res = await self.core.execute_order(name, "sell", current_price * 1.007, 15.0, data["token_id"])
+                    data["cash"] += res["cost"]
+                    data["inventory"] -= res["amount"]
+                    self.logger.info(f"[{name}] SENTIMENTO: LUCRO")
 
-        # Módulo 4: SNIPER (Caçador de Cisnes Negros / Oportunidades Extremas)
+        # --- CAIXA 04: SNIPER ---
         elif name == "CAIXA_04_SNI":
-            c_price = await self.core.get_real_price(data["token_id"])
-            if c_price <= 0: c_price = 0.05
+            current_price = await self.core.get_real_price(data["token_id"])
+            if current_price < 0.10: # Contratos baratos
+                qty = 50.0
+                cost = current_price * qty * 1.001
+                if data["cash"] >= cost:
+                    res = await self.core.execute_order(name, "buy", current_price, qty, data["token_id"])
+                    data["cash"] -= res["cost"]
+                    data["inventory"] += res["amount"]
+                    self.logger.info(f"[{name}] 🔫 SNIPER DISPAROU!")
 
-            # A estratégia do Sniper é comprar o que o mercado acha impossível (muito barato)
-            if c_price < 0.10: # Se o contrato estiver abaixo de 10 centavos
-                qty_snipe = 50.0
-                cost_snipe = (c_price * qty_snipe) * 1.002
-                if data["cash"] >= cost_snipe:
-                    res = await self.core.execute_order(name, "buy", c_price, qty_snipe, data["token_id"])
-                    data["cash"] = float(data["cash"] - res["cost"])
-                    data["inventory"] = float(data["inventory"] + res["amount"])
-                    self.logger.info(f"[{name}] 🔫 SNIPER DISPAROU! Alvo detectado a ${c_price:.2f}")
-
-        # --- CÁLCULO DE PATRIMÔNIO (EQUITY) ---
-        inv_f = float(data.get("inventory", 0))
-        cash_f = float(data.get("cash", 0))
-        start_f = float(data.get("start", 500.0))
-
-        # Valor do estoque baseado no preço de mercado atual
-        valor_estoque = round(inv_f * current_price, 4)
-        patrimonio_atual = round(cash_f + valor_estoque, 4)
+        # --- ATUALIZAÇÃO PATRIMONIAL ---
+        inv_v = float(data["inventory"]) * current_price
+        patrimonio = float(data["cash"] + inv_v)
         
-        # Histórico para ROI
-        last_balance = float(data.get("balance", 500.0))
-        lucro_no_tick = round(patrimonio_atual - last_balance, 6)
+        # Lucro para o Sniper (10%)
+        lucro = patrimonio - data["balance"]
+        if lucro > 0.001 and name != "CAIXA_04_SNI":
+            taxa = lucro * 0.10
+            data["cash"] -= taxa
+            self.caixas["CAIXA_04_SNI"]["cash"] += taxa
+            patrimonio -= taxa
+
+        data["balance"] = float(patrimonio)
+        start_cap = float(data["start"])
+        data["roi"] = float((patrimonio - start_cap) / start_cap if start_cap > 0 else 0)
         
-        # Lógica de Taxa de Sucesso: 10% do lucro vai para o Sniper
-        if lucro_no_tick > 0.001 and name != "CAIXA_04_SNI":
-            taxa = round(lucro_no_tick * 0.10, 6)
-            data["cash"] = float(round(cash_f - taxa, 6))
-            sni_cash = float(self.caixas["CAIXA_04_SNI"].get("cash", 0))
-            self.caixas["CAIXA_04_SNI"]["cash"] = float(round(sni_cash + taxa, 6))
-            patrimonio_atual = round(patrimonio_atual - taxa, 4)
-
-        data["balance"] = float(patrimonio_atual)
-        data["inventory"] = float(round(inv_f, 4))
-        data["roi"] = float((data["balance"] - start_f) / start_f if start_f > 0 else 0)
-
         self.core.latency_metrics["compute"] = (time.time() - start_compute) * 1000
 
     async def main_loop(self):
         self.is_running = True
-        self.logger.info(f"[BOOT] Jarvis Polymarket Stable v2.0 Iniciado.")
+        self.logger.info(f"[BOOT] Jarvis {self.os_version} Inicializado com Sucesso.")
         
         while self.is_running:
-            # Check de Termodinâmica (GTX 1660)
             if not self.telemetry.check_system_viability(0, self.core.latency_metrics):
-                self.logger.critical("Interrupção por Temperatura Elevada.")
+                self.logger.critical("ALERTA TÉRMICO: Encerrando por segurança.")
                 break
             
-            # Processa cada caixa com dados reais do Polymarket
-            tasks = []
-            for name, data in self.caixas.items():
-                tasks.append(self.run_market_tick(name, data))
-            
+            tasks = [self.run_market_tick(n, d) for n, d in self.caixas.items()]
             await asyncio.gather(*tasks)
             
-            # Limpeza periódica
-            if int(time.time()) % 120 == 0: gc.collect()
+            # Persistência de lucro a cada 30 segundos
+            if int(time.time()) % 30 == 0:
+                self.save_state()
+                gc.collect()
             
-            # Export para o Dashboard (Paper Mode)
-            self.telemetry.export_dashboard_data(self.caixas, self.core.latency_metrics, mode="POLYMARKET-REALTIME")
-            
+            self.telemetry.export_dashboard_data(self.caixas, self.core.latency_metrics, mode="POLYMARKET-TURBO")
             await asyncio.sleep(TICK_RATE)
 
     def stop(self):
         self.is_running = False
-        self.logger.info("Encerrando bot com segurança.")
+        self.logger.info("Sistema encerrado.")
 
 if __name__ == "__main__":
-    import sys
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    
     jarvis = JarvisPolymarketStable()
     try:
         asyncio.run(jarvis.main_loop())
