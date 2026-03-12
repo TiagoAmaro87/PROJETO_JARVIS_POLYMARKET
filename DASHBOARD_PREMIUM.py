@@ -57,26 +57,27 @@ def load_data():
 
 data = load_data()
 
-st.title("🤖 JARVIS - Mission Control v2.1")
-st.markdown("---")
+# Abas do Dashboard
+tab_control, tab_markets = st.tabs(["🚀 Mission Control", "🔭 Market Explorer"])
 
-if data:
-    # --- HEADER METRICS ---
-    hw = data.get("hardware", {})
-    finance = data.get("finance", {})
-    
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    total_balance = sum([v["balance"] for v in finance.values()])
-    total_roi = (sum([v["balance"] for v in finance.values()]) / sum([v["start"] for v in finance.values()]) - 1) * 100
-    
-    col1.metric("🌍 TOTAL PATRIMÔNIO", f"${total_balance:,.2f}", f"{total_roi:.2f}%")
-    col2.metric("🌡️ GPU TEMP", f"{hw.get('gpu_temp', 0)}°C", delta_color="inverse")
-    col3.metric("🧠 CPU LOAD", f"{hw.get('cpu_load', 0)}%", delta_color="inverse")
-    col4.metric("📊 RAM USED", f"{hw.get('ram_used', 0)}%")
-    col5.metric("📡 STATUS", data.get("status", "STANDBY"), delta="LIVE")
+with tab_control:
+    if data:
+        # --- HEADER METRICS ---
+        hw = data.get("hardware", {})
+        finance = data.get("finance", {})
+        
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        total_balance = sum([v["balance"] for v in finance.values()])
+        total_roi = (sum([v["balance"] for v in finance.values()]) / sum([v["start"] for v in finance.values()]) - 1) * 100
+        
+        col1.metric("🌍 TOTAL PATRIMÔNIO", f"${total_balance:,.2f}", f"{total_roi:.2f}%")
+        col2.metric("🌡️ GPU TEMP", f"{hw.get('gpu_temp', 0)}°C", delta_color="inverse")
+        col3.metric("🧠 CPU LOAD", f"{hw.get('cpu_load', 0)}%", delta_color="inverse")
+        col4.metric("📊 RAM USED", f"{hw.get('ram_used', 0)}%")
+        col5.metric("📡 STATUS", data.get("status", "STANDBY"), delta="LIVE")
 
-    st.markdown("### 🏦 Gestão das Caixas (Polymarket Turbo)")
+        st.markdown("### 🏦 Gestão das Caixas (Polymarket Turbo)")
     
     # --- FINANCIAL GRID ---
     caixas_cols = st.columns(4)
@@ -167,9 +168,23 @@ if data:
                 clean_lines = [l.strip() for l in lines[-10:] if l.strip()]
                 st.code("\n".join(clean_lines), language="log")
 
-else:
-    st.warning("Aguardando dados do JARVIS... Certifique-se de que o sistema está rodando.")
-    st.info("O arquivo live_status.json ainda não foi gerado.")
+
+with tab_markets:
+    st.markdown("### 🔭 Market Explorer")
+    st.info("Esta aba monitora mercados em tempo real sem afetar o capital das caixas principais.")
+    
+    if os.path.exists("targets.json"):
+        with open("targets.json", "r") as f:
+            targets_data = json.load(f)
+            st.write("#### Mercados em Observação:")
+            for t in targets_data.get("targets", []):
+                with st.expander(f"📍 {t['name']}"):
+                    st.write(f"ID: {t['id']}")
+                    st.write(f"Estratégia: {t['strategy']}")
+                    st.write(f"Threshold: {t['threshold']}")
+                    st.progress(0.4) # Simulação de atividade
+    else:
+        st.warning("Arquivo targets.json não encontrado para expansão.")
 
 st.markdown(f"""
     <div style='text-align: center; color: #8b949e; padding: 20px;'>
