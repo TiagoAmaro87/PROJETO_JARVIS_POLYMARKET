@@ -191,6 +191,11 @@ with tab_control:
 
 with tab_active:
     st.markdown("### ⚡ Oportunidades Ativas")
+    
+    active_total = payload.get("active_total", 0)
+    col_a1, col_a2 = st.columns([1, 3])
+    col_a1.metric("💰 TOTAL EM OPERAÇÃO", f"${active_total:,.2f}")
+    
     st.info("Monitoramento detalhado de mercados do Explorer que dispararam execução.")
     
     if active_opps:

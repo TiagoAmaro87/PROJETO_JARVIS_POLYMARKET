@@ -178,12 +178,12 @@ class JarvisPolymarketStable:
         elif name == "CAIXA_02_MM":
             current_price = await self.core.get_real_price(data["token_id"])
             inv, cash = data["inventory"], data["cash"]
-            qty = 40.0 # Aumentado para diluir GAS
+            qty = 100.0 # Aumentado para diluir GAS (Mão de $50-$100)
 
-            if inv < 100:
+            if inv < 200:
                 buy_p = current_price * 0.998
-                # Simulação de viabilidade: spread deve ser > 2x GAS
-                if (current_price - buy_p) * qty > (self.core.polygon_gas_price * 2):
+                # Simulação de viabilidade: spread deve ser > GAS
+                if (current_price - buy_p) * qty > (self.core.polygon_gas_price * 1.2):
                     res = await self.core.execute_order(name, "buy", buy_p, qty, data["token_id"])
                     if float(cash) >= float(res["cost"]):
                         data["cash"] = float(data["cash"]) - float(res["cost"])
@@ -202,17 +202,20 @@ class JarvisPolymarketStable:
         elif name == "CAIXA_03_SENT":
             current_price = await self.core.get_real_price(data["token_id"])
             inv, cash = data["inventory"], data["cash"]
-            qty = 50.0 # Aumentado para eficiência de Gás
+            qty = 100.0 # Aumentado para eficiência de Gás
 
-            if random.random() > 0.7: # Menos agressivo para evitar over-trading
-                if inv < 150:
+            if random.random() > 0.4: # Mais agressivo para testes
+                if inv < 300:
                     # Só entra se a tendência for forte e compensar o Gás
-                    if (current_price * 0.01) * qty > (self.core.polygon_gas_price * 3):
+                    profit_potential = (current_price * 0.005) * qty
+                    if profit_potential > (self.core.polygon_gas_price * 1.1):
                         res = await self.core.execute_order(name, "buy", current_price * 1.001, qty, data["token_id"])
                         if float(cash) >= float(res["cost"]):
                             data["cash"] = float(data["cash"]) - float(res["cost"])
                             data["inventory"] = float(data["inventory"]) + float(res["amount"])
-                            self.logger.info(f"[{name}] SENTIMENTO: ENTRADA FILTRADA")
+                            self.logger.info(f"[{name}] SENTIMENTO: ENTRADA EXECUTADA")
+                    else:
+                        self.logger.info(f"[{name}] Trade ignorado: Lucro est. ${profit_potential:.3f} < Gás")
                 elif inv >= qty:
                     res = await self.core.execute_order(name, "sell", current_price * 1.007, qty, data["token_id"])
                     data["cash"] = float(data["cash"]) + float(res["cost"])
@@ -251,20 +254,13 @@ class JarvisPolymarketStable:
         
         self.core.latency_metrics["compute"] = (time.time() - start_compute) * 1000
 
-    async def run_explorer_scan(self):
-        """Varre os alvos do Explorer e dispara ordens se as condições forem atendidas."""
-        self.explorer_prices: Dict[str, float] = {}
-        
-        # Unifica alvos manuais + descobertos globalmente
-        all_targets = self.explorer_targets + self.discovered_targets
-        
-        for target in all_targets:
-            t_id = target["id"]
-            
-            # Busca preços reais (apenas se tiver YES/NO configurado)
-            y_token = target["token_ids"].get("yes")
-            if not y_token: continue
-            
+    async def process_explorer_target(self, target: Dict):
+        """Processa um único alvo do explorer de forma assíncrona."""
+        t_id = target["id"]
+        y_token = target["token_ids"].get("yes")
+        if not y_token: return
+
+        try:
             y_p = await self.core.get_real_price(y_token)
             self.explorer_prices[f"{t_id}_yes"] = y_p
 
@@ -272,31 +268,44 @@ class JarvisPolymarketStable:
                 opp = self.active_opportunities[t_id]
                 opp["balance"] = opp["cash"] + (opp["inventory"] * y_p)
                 opp["roi"] = (opp["balance"] - opp["start"]) / opp["start"] if opp["start"] > 0 else 0
-                continue
+                return
 
-            # --- ESTRATÉGIA AGRESSIVA: LOTTERY TICKET (SNIPER EXTREMO) ---
             if y_p <= 0.05 and y_p > 0.005: 
-                # Se detectarmos algo ultra-barato com potencial
-                qty = 100.0 # "Aposta" pequena para ganho gigante
+                qty = 10.0 / y_p 
                 res = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, y_token)
                 self.active_opportunities[t_id] = {
                     "name": f"🍀 {target['name'][:30]}...", 
                     "cash": 0.0, "inventory": qty, "start": res["cost"], 
                     "balance": res["cost"], "roi": 0.0, "strategy": "Extreme Sniper"
                 }
-                self.logger.info(f"🚀 [EXPONENCIAL] Bilhete Premiado Comprado: {target['name']}")
-                continue
-
-            # Lógica Normal para alvos manuais
-            strategy = target.get("strategy")
-            if strategy == "sniper" and y_p < target.get("threshold", 0.10):
-                qty = target.get("max_investment", 20.0) / y_p
+                self.logger.info(f"🚀 [EXPONENCIAL] Bilhete Premiado Comprado ($10): {target['name']}")
+            
+            elif target.get("strategy") == "sniper" and y_p < target.get("threshold", 0.10):
+                qty = 10.0 / y_p
                 res = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, y_token)
                 self.active_opportunities[t_id] = {
                     "name": target["name"], "cash": 0.0, "inventory": qty, 
                     "start": res["cost"], "balance": res["cost"], "roi": 0.0, "strategy": "Sniper"
                 }
-                self.logger.info(f"🔫 [EXPLORER] Sniper Alvo Ativado: {target['name']}")
+                self.logger.info(f"🔫 [EXPLORER] Sniper Alvo Ativado ($10): {target['name']}")
+        except:
+            pass
+
+    async def run_explorer_scan(self):
+        """Varre os alvos de forma paralela para não bloquear o loop principal."""
+        self.explorer_prices: Dict[str, float] = {}
+        all_targets = self.explorer_targets + self.discovered_targets
+        
+        # Só varre o Global Hunter a cada 3 ticks para não sobrecarregar
+        if not hasattr(self, "_explorer_tick"): self._explorer_tick = 0
+        self._explorer_tick += 1
+        
+        targets_to_scan = self.explorer_targets # VIPs sempre
+        if self._explorer_tick % 5 == 0:
+            targets_to_scan = all_targets # Toda a lista a cada 5 ticks
+            
+        tasks = [self.process_explorer_target(t) for t in targets_to_scan]
+        await asyncio.gather(*tasks)
 
     def log_trade(self, pillar: str, type: str, cost: float, amount: float, token: str):
         """Registra uma operação no histórico de trades."""
@@ -370,7 +379,8 @@ class JarvisPolymarketStable:
                 payload = {
                     "finance": self.caixas,
                     "active_opportunities": self.active_opportunities,
-                    "explorer_prices": self.explorer_prices
+                    "explorer_prices": self.explorer_prices,
+                    "active_total": sum(opp["balance"] for opp in self.active_opportunities.values())
                 }
                 self.telemetry.export_dashboard_data(payload, self.core.latency_metrics, mode="POLYMARKET-TURBO")
                 self._last_dash = t_now
