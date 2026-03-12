@@ -1,0 +1,33 @@
+{
+    "targets": [
+        {
+            "id": "BITBOY-CONVICTED",
+            "name": "BitBoy Convicted?",
+            "token_ids": {
+                "yes": "75467129615908319583031474642658885479135630431889036121812713428992454630178",
+                "no": "3842963720267267286970642336860752782302644680156535061700039388405652129691"
+            },
+            "strategy": "arbitrage",
+            "threshold": 0.9995,
+            "max_investment": 50.0,
+            "enabled": true
+        },
+        {
+            "id": "RU-UK-CEASEFIRE",
+            "name": "RU-UK Ceasefire by April?",
+            "token_ids": {
+                "yes": "8501497159083948713316135768103773293754490207922884688769443031624417212426",
+                "no": "2527312495175492857904889758552137141356236738032676480522356889996545113869"
+            },
+            "strategy": "arbitrage",
+            "threshold": 0.9995,
+            "max_investment": 50.0,
+            "enabled": true
+        }
+    ],
+    "global_settings": {
+        "scan_interval": 0.2,
+        "max_parallel_scans": 10,
+        "paper_trading": true
+    }
+}

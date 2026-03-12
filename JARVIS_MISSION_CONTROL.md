@@ -1,5 +1,27 @@
 # 🤖 JARVIS - MISSION CONTROL & RESTORE POINT
 
+## 🔋 SISTEMA JARVIS V2 (MULTI-TARGET)
+
+A V2 permite monitorar dezenas de mercados simultaneamente usando o arquivo `targets.json`.
+
+### 🚀 Como Operar
+1.  **Edição Live:** Você pode editar `targets.json` enquanto o robô roda. Ele recarrega as configurações a cada 30 segundos.
+2.  **Novos Alvos:** Basta copiar o bloco de um alvo no JSON e alterar o `id`, `name` e `token_ids`.
+3.  **Execução:**
+    ```powershell
+    python jarvis_v2.py
+    ```
+
+### 🎯 Estratégia Atual: Arbitragem Pura
+O robô busca mercados onde `Preço(YES) + Preço(NO) < 0.999`. Ao comprar ambos, garantimos um lucro fixo quando o mercado resolve.
+
+---
+
+## 🛠️ MANUTENÇÃO E LOGS
+-   **Logs V1:** `jarvis_stable.log`
+-   **Logs V2:** `jarvis_v2.log`
+-   **Estado Financeiro:** `jarvis_v2_state.json`
+
 ## 📊 Status Atual da Operação (Windows Stable v2.1)
 - **Patrimônio Gerenciado**: ~$1.548,17
 - **Lucro por Minuto**: ~$0,21/min ($12,60/hora)

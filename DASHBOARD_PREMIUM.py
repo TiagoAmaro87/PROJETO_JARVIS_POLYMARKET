@@ -109,6 +109,22 @@ if data:
                      template="plotly_dark")
         st.plotly_chart(fig, use_container_width=True)
 
+    # --- WEALTH HISTORY CHART ---
+    st.markdown("---")
+    st.markdown("#### 📈 Evolução do Patrimônio Total ($)")
+    if os.path.exists("wealth_history.json"):
+        with open("wealth_history.json", "r") as f:
+            hist_data = json.load(f)
+            if hist_data:
+                df_hist = pd.DataFrame(hist_data)
+                df_hist['time'] = pd.to_datetime(df_hist['timestamp'], unit='s')
+                fig_hist = px.line(df_hist, x='time', y='balance', 
+                                  line_shape='spline',
+                                  color_discrete_sequence=["#58a6ff"],
+                                  template="plotly_dark")
+                fig_hist.update_layout(xaxis_title="", yaxis_title="Balance")
+                st.plotly_chart(fig_hist, use_container_width=True)
+
     with c_right:
         st.markdown("#### ⚡ Latência do Sistema")
         latency = data.get("latency", {})
@@ -125,12 +141,31 @@ if data:
         fig_lat.update_layout(template="plotly_dark", margin=dict(l=20, r=20, t=50, b=20))
         st.plotly_chart(fig_lat, use_container_width=True)
 
-    # --- LOGS TAIL ---
-    st.markdown("#### 📝 Atividade Recente (Linux Kernel)")
-    if os.path.exists("jarvis_stable.log"):
-        with open("jarvis_stable.log", "r") as f:
-            lines = f.readlines()
-            st.code("".join(lines[-10:]), language="log")
+    # --- TRADES AND LOGS ---
+    st.markdown("---")
+    l_col, r_col = st.columns(2)
+    
+    with l_col:
+        st.markdown("#### 🛰️ Feed de Operações Recentes")
+        if os.path.exists("trades_history.json"):
+            with open("trades_history.json", "r") as f:
+                trades = json.load(f)
+                if trades:
+                    df_trades = pd.DataFrame(trades).iloc[::-1] # Reverse for most recent first
+                    st.dataframe(df_trades, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Nenhuma operação registrada ainda.")
+        else:
+            st.info("Arquivo de trades não encontrado.")
+
+    with r_col:
+        st.markdown("#### 📝 Console Output (Last 10)")
+        if os.path.exists("jarvis_stable.log"):
+            with open("jarvis_stable.log", "r") as f:
+                lines = f.readlines()
+                # Clean up lines for better display
+                clean_lines = [l.strip() for l in lines[-10:] if l.strip()]
+                st.code("\n".join(clean_lines), language="log")
 
 else:
     st.warning("Aguardando dados do JARVIS... Certifique-se de que o sistema está rodando.")

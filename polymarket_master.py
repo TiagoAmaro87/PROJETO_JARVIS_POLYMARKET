@@ -7,6 +7,7 @@ import random
 import sys
 import io
 from typing import Dict, List, Any, cast
+from datetime import datetime
 from dotenv import load_dotenv
 
 from hardware_engine import HardwareEngine
@@ -63,6 +64,14 @@ class JarvisPolymarketStable:
         self.is_running = False
         self._last_save = 0
         self._last_dash = 0
+        self._last_history_save = 0
+        self.trades_file = "trades_history.json"
+        self.history_file = "wealth_history.json"
+        
+        # Load or init trade history
+        if not os.path.exists(self.trades_file):
+            with open(self.trades_file, "w") as f:
+                json.dump([], f)
 
     def load_state(self):
         """Carrega o lucro e o estoque salvos anteriormente."""
@@ -127,6 +136,7 @@ class JarvisPolymarketStable:
                     data["cash"] -= total_cost
                     data["inventory"] += qty
                     self.logger.info(f"[{name}] 🎯 ARBITRAGEM EXECUTADA | CUSTO: {total_cost:.4f}")
+                    self.log_trade(name, "BUY_ARB", total_cost, qty, target["yes"])
                 else:
                     self.logger.warning(f"[{name}] Saldo insuficiente para arbitragem!")
 
@@ -149,6 +159,7 @@ class JarvisPolymarketStable:
                 data["cash"] = float(data["cash"]) + float(res["cost"])
                 data["inventory"] = float(data["inventory"]) - float(res["amount"])
                 self.logger.info(f"[{name}] MM VENDA (LUCRO)")
+                self.log_trade(name, "SELL_MM", res["cost"], res["amount"], data["token_id"])
 
         # --- CAIXA 03: SENTIMENTO ---
         elif name == "CAIXA_03_SENT":
@@ -199,6 +210,51 @@ class JarvisPolymarketStable:
         
         self.core.latency_metrics["compute"] = (time.time() - start_compute) * 1000
 
+    def log_trade(self, pillar: str, type: str, cost: float, amount: float, token: str):
+        """Registra uma operação no histórico de trades."""
+        trade = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "pillar": pillar,
+            "type": type,
+            "cost": float(cost),
+            "amount": float(amount),
+            "token": token[:10] + "..." + token[-10:]
+        }
+        try:
+            trades = []
+            if os.path.exists(self.trades_file):
+                with open(self.trades_file, "r") as f:
+                    trades = json.load(f)
+            trades.append(trade)
+            # Keep only last 50 trades
+            if len(trades) > 50:
+                trades = trades[-50:]
+            with open(self.trades_file, "w") as f:
+                json.dump(trades, f, indent=4)
+        except Exception as e:
+            self.logger.error(f"Erro ao logar trade: {e}")
+
+    def save_history(self):
+        """Salva o histórico de patrimônio para o gráfico."""
+        total_balance = sum([v["balance"] for v in self.caixas.values()])
+        point = {
+            "timestamp": time.time(),
+            "balance": total_balance
+        }
+        try:
+            history = []
+            if os.path.exists(self.history_file):
+                with open(self.history_file, "r") as f:
+                    history = json.load(f)
+            history.append(point)
+            # Keep last 500 points
+            if len(history) > 500:
+                history = history[-500:]
+            with open(self.history_file, "w") as f:
+                json.dump(history, f, indent=4)
+        except Exception as e:
+            self.logger.error(f"Erro ao salvar histórico: {e}")
+
     async def main_loop(self):
         self.is_running = True
         self.logger.info(f"[BOOT] Jarvis {self.os_version} Inicializado com Sucesso.")
@@ -222,8 +278,14 @@ class JarvisPolymarketStable:
             # Salva estado a cada 60 segundos
             if t_now % 60 == 0 and t_now != self._last_save:
                 self.save_state()
+                self.save_history() # Salva histórico junto com o estado
                 gc.collect()
                 self._last_save = t_now
+
+            # Salva histórico a cada 10 segundos também para gráficos mais fluidos
+            if t_now % 10 == 0 and t_now != self._last_history_save:
+                self.save_history()
+                self._last_history_save = t_now
 
             await asyncio.sleep(TICK_RATE)
 

@@ -1,0 +1,16 @@
+{
+    "BITBOY-CONVICTED": {
+        "balance": 49.96004004000001,
+        "cash": 9.96004004000001,
+        "inventory": 40.0,
+        "roi": -0.0007991991999998049,
+        "start": 50.0
+    },
+    "RU-UK-CEASEFIRE": {
+        "balance": 50.0,
+        "cash": 50.0,
+        "inventory": 0.0,
+        "roi": 0.0,
+        "start": 50.0
+    }
+}

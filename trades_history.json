@@ -1,0 +1,402 @@
+[
+    {
+        "timestamp": "2026-03-12 11:44:24",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:25",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:26",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:28",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:29",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:30",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:31",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:38",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:39",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:40",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:41",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:42",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:44",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:45",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:46",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:47",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:48",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:49",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:51",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:52",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:53",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:54",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:55",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:56",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:57",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:44:59",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:00",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:01",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:02",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:03",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:04",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:06",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:07",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:08",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:09",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:10",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:11",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:13",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:14",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:15",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:16",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:17",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:18",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:19",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:21",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:22",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:23",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:24",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:25",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    },
+    {
+        "timestamp": "2026-03-12 11:45:26",
+        "pillar": "CAIXA_02_MM",
+        "type": "SELL_MM",
+        "cost": 0.5554873566,
+        "amount": 10.0,
+        "token": "1102518281...1937033858"
+    }
+]
