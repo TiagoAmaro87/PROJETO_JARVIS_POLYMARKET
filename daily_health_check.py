@@ -12,7 +12,7 @@ class DailyHealthCheck:
         self.dd_limit = dd_limit
         self.logger = logging.getLogger("JarvisHealth")
 
-    def check_system_viability(self, current_balance: float, latency: Dict) -> bool:
+    def check_system_viability(self, current_balance: float) -> bool:
         hw = self.hw_engine.get_gpu_status()
         if hw["temp"] >= self.temp_limit:
             self.logger.critical("[CRITICAL] GPU overheat detected!")
@@ -35,11 +35,10 @@ class DailyHealthCheck:
             "status": mode # SIMULATION ou LEAN
         }
         try:
-            p = r"c:\Users\tiago\.gemini\antigravity\playground\pyro-nebula\public\live_status.json"
-            with open(p, "w") as f:
+            with open("live_status.json", "w") as f:
                 json.dump(report, f, indent=4)
-        except:
-            pass
+        except Exception as e:
+            self.logger.error(f"Erro ao exportar dashboard: {e}")
 
     def daily_report(self, caixas: Dict, latency: Dict):
         hw = self.hw_engine.get_gpu_status()

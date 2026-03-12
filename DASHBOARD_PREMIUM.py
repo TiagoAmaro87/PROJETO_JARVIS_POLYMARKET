@@ -1,0 +1,143 @@
+import streamlit as st
+import json
+import os
+import time
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+from streamlit_autorefresh import st_autorefresh
+from datetime import datetime
+
+# Configuração da página - Dark Mode Premium
+st.set_page_config(
+    page_title="JARVIS MISSION CONTROL",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Estilização CSS para visual "Gamer/Premium"
+st.markdown("""
+<style>
+    .main {
+        background-color: #0E1117;
+    }
+    .stMetric {
+        background-color: #161B22;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #30363D;
+    }
+    .status-card {
+        padding: 20px;
+        border-radius: 15px;
+        background: linear-gradient(135deg, #1e1e2f 0%, #0d0d1a 100%);
+        border: 1px solid #3d3d5c;
+        margin-bottom: 20px;
+    }
+    h1, h2, h3 {
+        color: #58a6ff !important;
+        font-family: 'Inter', sans-serif;
+    }
+    .p-lucro {
+        color: #3fb950;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Auto-refresh a cada 2 segundos
+st_autorefresh(interval=2000, key="datarefresh")
+
+def load_data():
+    if os.path.exists("live_status.json"):
+        with open("live_status.json", "r") as f:
+            return json.load(f)
+    return None
+
+data = load_data()
+
+st.title("🤖 JARVIS - Mission Control v2.1")
+st.markdown("---")
+
+if data:
+    # --- HEADER METRICS ---
+    hw = data.get("hardware", {})
+    finance = data.get("finance", {})
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    total_balance = sum([v["balance"] for v in finance.values()])
+    total_roi = (sum([v["balance"] for v in finance.values()]) / sum([v["start"] for v in finance.values()]) - 1) * 100
+    
+    col1.metric("🌍 TOTAL PATRIMÔNIO", f"${total_balance:,.2f}", f"{total_roi:.2f}%")
+    col2.metric("🌡️ GPU TEMP", f"{hw.get('gpu_temp', 0)}°C", delta_color="inverse")
+    col3.metric("🧠 CPU LOAD", f"{hw.get('cpu_load', 0)}%", delta_color="inverse")
+    col4.metric("📊 RAM USED", f"{hw.get('ram_used', 0)}%")
+    col5.metric("📡 STATUS", data.get("status", "STANDBY"), delta="LIVE")
+
+    st.markdown("### 🏦 Gestão das Caixas (Polymarket Turbo)")
+    
+    # --- FINANCIAL GRID ---
+    caixas_cols = st.columns(4)
+    
+    for i, (name, d) in enumerate(finance.items()):
+        with caixas_cols[i]:
+            roi_val = d['roi'] * 100
+            st.markdown(f"""
+            <div class='status-card'>
+                <h3 style='margin-top:0;'>{name}</h3>
+                <p>Cash: <span style='color:white'>${d['cash']:.2f}</span></p>
+                <p>Inv: <span style='color:white'>${d['inventory'] * 0.5:.2f}</span></p>
+                <p style='font-size:1.2em'>ROI: <span style='color:{"#3fb950" if roi_val >= 0 else "#f85149"}'>{roi_val:.2f}%</span></p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # --- CHARTS ---
+    st.markdown("---")
+    c_left, c_right = st.columns([2, 1])
+    
+    with c_left:
+        st.markdown("#### 📈 Distribuição de Capital")
+        df_finance = pd.DataFrame([
+            {"Caixa": k, "Investido": v["inventory"] * 0.5, "Cash": v["cash"]}
+            for k, v in finance.items()
+        ])
+        fig = px.bar(df_finance, x="Caixa", y=["Investido", "Cash"], 
+                     title="Alocação por Estratégia",
+                     color_discrete_sequence=["#58a6ff", "#3fb950"],
+                     template="plotly_dark")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with c_right:
+        st.markdown("#### ⚡ Latência do Sistema")
+        latency = data.get("latency", {})
+        fig_lat = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = latency.get("compute", 0),
+            title = {'text': "Compute (ms)"},
+            gauge = {'axis': {'range': [None, 100]},
+                     'bar': {'color': "#58a6ff"},
+                     'steps' : [
+                         {'range': [0, 20], 'color': "green"},
+                         {'range': [20, 50], 'color': "yellow"},
+                         {'range': [50, 100], 'color': "red"}]}))
+        fig_lat.update_layout(template="plotly_dark", margin=dict(l=20, r=20, t=50, b=20))
+        st.plotly_chart(fig_lat, use_container_width=True)
+
+    # --- LOGS TAIL ---
+    st.markdown("#### 📝 Atividade Recente (Linux Kernel)")
+    if os.path.exists("jarvis_stable.log"):
+        with open("jarvis_stable.log", "r") as f:
+            lines = f.readlines()
+            st.code("".join(lines[-10:]), language="log")
+
+else:
+    st.warning("Aguardando dados do JARVIS... Certifique-se de que o sistema está rodando.")
+    st.info("O arquivo live_status.json ainda não foi gerado.")
+
+st.markdown(f"""
+    <div style='text-align: center; color: #8b949e; padding: 20px;'>
+        JARVIS v2.1-ULTIMATE | Host: WSL Ubuntu 24.04 | Last Update: {datetime.now().strftime('%H:%M:%S')}
+    </div>
+""", unsafe_allow_html=True)

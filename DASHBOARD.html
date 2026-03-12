@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JARVIS POLYMARKET | OS DASHBOARD</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #050a0f;
-            --card-bg: rgba(16, 24, 39, 0.8);
-            --accent-blue: #00d2ff;
-            --accent-green: #00ff88;
-            --accent-red: #ff3366;
-            --text-primary: #e5e7eb;
+            --bg-color: #030712;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --text-primary: #f3f4f6;
             --text-secondary: #9ca3af;
+            --border: rgba(255, 255, 255, 0.1);
         }
 
         * {
@@ -23,306 +26,408 @@
         }
 
         body {
-            background: var(--bg-color);
+            background-color: var(--bg-color);
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 210, 255, 0.05) 0%, transparent 70%),
-                linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)),
-                url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
             overflow-x: hidden;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
         header {
-            padding: 2rem;
-            text-align: center;
-            border-bottom: 1px solid rgba(0, 210, 255, 0.2);
-            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
         }
 
-        h1 {
+        .logo-section h1 {
             font-family: 'Orbitron', sans-serif;
-            font-size: 2.5rem;
-            letter-spacing: 4px;
-            color: var(--accent-blue);
-            text-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
-            margin-bottom: 0.5rem;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.25rem;
+        }
+
+        .os-version {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
         }
 
         .status-badge {
-            display: inline-block;
-            padding: 0.25rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
             border-radius: 9999px;
-            background: rgba(0, 255, 136, 0.1);
-            border: 1px solid var(--accent-green);
             color: var(--accent-green);
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             font-weight: 600;
             text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-green);
             animation: pulse 2s infinite;
         }
 
-        main {
-            flex: 1;
-            padding: 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-            width: 100%;
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
         }
 
         .card {
             background: var(--card-bg);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
             border-radius: 1rem;
             padding: 1.5rem;
             position: relative;
             overflow: hidden;
-            transition: transform 0.3s ease, border-color 0.3s ease;
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-blue);
-        }
-
-        .card::before {
+        .card::after {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--accent-blue);
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+            opacity: 0.5;
         }
 
         .card-title {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.25rem;
-            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
         }
 
-        .stat-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
+        /* Hardware Stats */
+        .stat-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
         }
 
-        .stat-item {
-            text-align: center;
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
         }
 
         .stat-label {
             font-size: 0.75rem;
             color: var(--text-secondary);
-            text-transform: uppercase;
-            margin-bottom: 0.5rem;
         }
 
         .stat-value {
-            font-size: 1.5rem;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
             font-weight: 700;
-            color: var(--accent-blue);
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--accent-blue);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Caixas */
+        .caixa-card {
+            grid-column: span 2;
+        }
+
+        .caixas-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
         }
 
         .caixa-item {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
             padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .caixa-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .caixa-id {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+        }
+
+        .caixa-roi {
+            font-size: 0.75rem;
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .caixa-amount {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .caixa-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* Latency */
+        .latency-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .latency-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Log */
+        .log-card {
+            grid-column: span 4;
+            padding: 0;
+        }
+
+        .log-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .caixa-name {
-            font-weight: 600;
-        }
-
-        .caixa-balance {
-            color: var(--accent-green);
-            font-family: 'Orbitron', sans-serif;
-        }
-
-        .pilar-tag {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            display: block;
-        }
-
-        .log-terminal {
-            background: #000;
-            border-radius: 0.5rem;
-            padding: 1rem;
+        .log-container {
+            height: 250px;
+            padding: 1rem 1.5rem;
+            overflow-y: auto;
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.85rem;
-            height: 200px;
-            overflow-y: auto;
-            color: #ccc;
-            border: 1px solid #333;
+            color: #d1d5db;
         }
 
         .log-line {
-            margin-bottom: 0.25rem;
-            border-left: 2px solid #555;
-            padding-left: 0.5rem;
+            margin-bottom: 0.4rem;
+            display: flex;
+            gap: 0.75rem;
         }
 
-        .log-info { color: var(--accent-blue); }
-        .log-warn { color: #facc15; }
-        .log-crit { color: var(--accent-red); }
+        .log-ts { color: var(--text-secondary); opacity: 0.5; }
+        .log-tag { color: var(--accent-blue); font-weight: 600; }
+        .log-msg {}
 
-        @keyframes pulse {
-            0% { opacity: 0.6; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
-            70% { opacity: 1; box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
-            100% { opacity: 0.6; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+        .text-green { color: var(--accent-green); }
+        .text-red { color: var(--accent-red); }
+        .text-cyan { color: var(--accent-cyan); }
+
+        ::-webkit-scrollbar {
+            width: 6px;
         }
-
-        footer {
-            padding: 2rem;
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
+        ::-webkit-scrollbar-track {
+            background: transparent;
         }
-
-        progress {
-            width: 100%;
-            height: 8px;
-            border-radius: 4px;
-            margin-top: 0.5rem;
-        }
-
-        progress::-webkit-progress-bar {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-
-        progress::-webkit-progress-value {
-            background: linear-gradient(to right, #00d2ff, #00ff88);
-            border-radius: 4px;
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>JARVIS POLYMARKET OS</h1>
-        <div class="status-badge" id="bot-status">SISTEMA ONLINE - MODO TESTE</div>
-    </header>
+    <div class="container">
+        <header>
+            <div class="logo-section">
+                <h1>JARVIS POLYMARKET</h1>
+                <div class="os-version">Neural Trading OS v2.1-ULTIMATE</div>
+            </div>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                <span id="mode-text">POLYMARKET-TURBO</span>
+            </div>
+        </header>
 
-    <main>
-        <!-- CARD 01: HARDWARE STATUS -->
-        <div class="card">
-            <div class="card-title">⚙️ HARDWARE MONITOR</div>
-            <div class="stat-grid">
-                <div class="stat-item">
-                    <div class="stat-label">GPU TEMP</div>
-                    <div class="stat-value" id="gpu-temp">36.0°C</div>
-                    <progress id="temp-bar" value="36" max="80"></progress>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">GPU LOAD</div>
-                    <div class="stat-value" id="gpu-load">6%</div>
-                    <progress id="load-bar" value="6" max="100"></progress>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">CPU LOAD</div>
-                    <div class="stat-value" id="cpu-load">22.9%</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">RAM USED</div>
-                    <div class="stat-value" id="ram-usage">68.0%</div>
+        <main class="grid">
+            <!-- Hardware -->
+            <div class="card">
+                <div class="card-title">🖥️ HARDWARE</div>
+                <div class="stat-group">
+                    <div>
+                        <div class="stat-row">
+                            <span class="stat-label">GPU TEMP</span>
+                            <span class="stat-value" id="gpu-temp">--°C</span>
+                        </div>
+                        <div class="progress-container"><div class="progress-bar" id="temp-bar"></div></div>
+                    </div>
+                    <div>
+                        <div class="stat-row">
+                            <span class="stat-label">GPU LOAD</span>
+                            <span class="stat-value" id="gpu-load">--%</span>
+                        </div>
+                        <div class="progress-container"><div class="progress-bar" id="load-bar"></div></div>
+                    </div>
+                    <div>
+                        <div class="stat-row">
+                            <span class="stat-label">RAM USED</span>
+                            <span class="stat-value" id="ram-used">--%</span>
+                        </div>
+                        <div class="progress-container"><div class="progress-bar" id="ram-bar"></div></div>
+                    </div>
                 </div>
             </div>
-            <div style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-secondary)">
-                MOTOR: NVIDIA GeForce GTX 1660 | CUDA v12.1 Ready
-            </div>
-        </div>
 
-        <!-- CARD 02: AS 4 CAIXAS -->
-        <div class="card">
-            <div class="card-title">💰 GESTÃO DE CAPITAL</div>
-            <div class="caixa-item">
-                <div>
-                    <span class="caixa-name">CAIXA_01</span>
-                    <span class="pilar-tag">Arbitragem de Soma Zero</span>
+            <!-- Finance Overview -->
+            <div class="card caixa-card">
+                <div class="card-title">💵 CAPITAL MANAGEMENT</div>
+                <div class="caixas-grid" id="caixas-list">
+                    <!-- Dynamic -->
                 </div>
-                <div class="caixa-balance">$500.00</div>
             </div>
-            <div class="caixa-item">
-                <div>
-                    <span class="caixa-name">CAIXA_02</span>
-                    <span class="pilar-tag">Market Making (Stoikov)</span>
-                </div>
-                <div class="caixa-balance">$500.00</div>
-            </div>
-            <div class="caixa-item">
-                <div>
-                    <span class="caixa-name">CAIXA_03</span>
-                    <span class="pilar-tag">NLP / Sentiment Analysis</span>
-                </div>
-                <div class="caixa-balance">$500.00</div>
-            </div>
-            <div class="caixa-item">
-                <div>
-                    <span class="caixa-name">CAIXA_04</span>
-                    <span class="pilar-tag">Sniper (Cisne Negro)</span>
-                </div>
-                <div class="caixa-balance">$0.00</div>
-            </div>
-        </div>
 
-        <!-- CARD 03: LIVE LOGS -->
-        <div class="card" style="grid-column: span 1.5;">
-            <div class="card-title">📡 LIVE SYSTEM LOGS</div>
-            <div class="log-terminal" id="terminal">
-                <div class="log-line"><span class="log-info">[INIT]</span> JARVIS_POLYMARKET_OS v1.0-SNIPER-RELEASE Inicializado.</div>
-                <div class="log-line"><span class="log-info">[CUDA]</span> GTX 1660 mapeada para processamento intensivo.</div>
-                <div class="log-line"><span class="log-info">[API]</span> Conectado com sucesso à CLOB API (Polymarket).</div>
-                <div class="log-line"><span class="log-warn">[TEST]</span> Modo de Dinheiro Real: DESATIVADO.</div>
-                <div class="log-line"><span class="log-info">[SCAN]</span> Iniciando monitoramento de hardware e mercados...</div>
+            <!-- Latency -->
+            <div class="card">
+                <div class="card-title">📡 NETWORK LATENCY</div>
+                <div class="stat-group">
+                    <div class="latency-row">
+                        <span class="stat-label">NETWORK</span>
+                        <span class="stat-value text-cyan" id="lat-net">-- ms</span>
+                    </div>
+                    <div class="latency-row">
+                        <span class="stat-label">COMPUTE</span>
+                        <span class="stat-value text-cyan" id="lat-comp">-- ms</span>
+                    </div>
+                    <div class="latency-row">
+                        <span class="stat-label">EXECUTION</span>
+                        <span class="stat-value text-cyan" id="lat-exec">-- ms</span>
+                    </div>
+                </div>
             </div>
-        </div>
-    </main>
 
-    <footer>
-        <p>&copy; 2026 PROJETO JARVIS - Mestre do Mercado Polymarket</p>
-    </footer>
+            <!-- Console Log -->
+            <div class="card log-card">
+                <div class="log-header">
+                    <div class="card-title" style="margin-bottom: 0">📟 SYSTEM CONSOLE</div>
+                    <div class="stat-label" id="last-update">LAST_UPDATE: --</div>
+                </div>
+                <div class="log-container" id="console">
+                    <div class="log-line">
+                        <span class="log-ts">[BOOT]</span>
+                        <span class="log-tag">SYSTEM</span>
+                        <span class="log-msg">Jarvis OS initialized. Awaiting data sync...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script>
-        // Simulação dinâmica para demonstração do dashboard vivo
-        setInterval(() => {
-            const temp = (35 + Math.random() * 3).toFixed(1);
-            const load = (5 + Math.random() * 10).toFixed(0);
-            
-            document.getElementById('gpu-temp').innerText = temp + '°C';
-            document.getElementById('gpu-load').innerText = load + '%';
-            document.getElementById('temp-bar').value = temp;
-            document.getElementById('load-bar').value = load;
+        async function updateDashboard() {
+            try {
+                const response = await fetch('live_status.json');
+                const data = await response.json();
 
-            // Simular logs
-            const terminal = document.getElementById('terminal');
-            const lines = [
-                '<span class="log-info">[SCAN]</span> Analisando correlação em GPU... Completo.',
-                '<span class="log-info">[DATA]</span> L2 OrderBook atualizado via WebSocket.',
-                '<span class="log-info">[HEALTH]</span> Verificação de sistema concluída. Status: OK.'
-            ];
-            
-            if (Math.random() > 0.7) {
-                const newLine = document.createElement('div');
-                newLine.className = 'log-line';
-                newLine.innerHTML = lines[Math.floor(Math.random() * lines.length)];
-                terminal.appendChild(newLine);
-                terminal.scrollTop = terminal.scrollHeight;
+                // Update Hardware
+                document.getElementById('gpu-temp').innerText = data.hardware.gpu_temp + '°C';
+                document.getElementById('gpu-load').innerText = data.hardware.gpu_load + '%';
+                document.getElementById('ram-used').innerText = data.hardware.ram_used.toFixed(1) + '%';
+                
+                document.getElementById('temp-bar').style.width = (data.hardware.gpu_temp / 80 * 100) + '%';
+                document.getElementById('load-bar').style.width = data.hardware.gpu_load + '%';
+                document.getElementById('ram-bar').style.width = data.hardware.ram_used + '%';
+                
+                if (data.hardware.gpu_temp > 70) document.getElementById('temp-bar').style.background = '#ef4444';
+                else document.getElementById('temp-bar').style.background = '#3b82f6';
+
+                // Update Latency
+                document.getElementById('lat-net').innerText = data.latency.network.toFixed(1) + ' ms';
+                document.getElementById('lat-comp').innerText = data.latency.compute.toFixed(1) + ' ms';
+                document.getElementById('lat-exec').innerText = data.latency.execution.toFixed(1) + ' ms';
+
+                // Update Caixas
+                const caixasContainer = document.getElementById('caixas-list');
+                caixasContainer.innerHTML = '';
+                
+                for (const [id, info] of Object.entries(data.finance)) {
+                    const roi = (info.roi * 100).toFixed(2);
+                    const item = document.createElement('div');
+                    item.className = 'caixa-item';
+                    item.innerHTML = `
+                        <div class="caixa-header">
+                            <span class="caixa-id">${id}</span>
+                            <span class="caixa-roi" style="color: ${roi >= 0 ? '#10b981' : '#ef4444'}">${roi}% ROI</span>
+                        </div>
+                        <div class="caixa-amount">$${info.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        <div class="caixa-label">${id.split('_')[2] || 'TOKEN'}</div>
+                    `;
+                    caixasContainer.appendChild(item);
+                }
+
+                // Update Console Log Simulation (since we don't have real-time log pushing here, we just show a few key events)
+                const console = document.getElementById('console');
+                const ts = new Date().toLocaleTimeString();
+                document.getElementById('last-update').innerText = 'LAST_UPDATE: ' + ts;
+                
+                document.getElementById('mode-text').innerText = data.status || 'OFFLINE';
+
+            } catch (error) {
+                console.error('Fetch error:', error);
             }
-        }, 3000);
+        }
+
+        // Initial update and interval
+        updateDashboard();
+        setInterval(updateDashboard, 1000);
     </script>
 </body>
 </html>

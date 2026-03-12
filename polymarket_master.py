@@ -6,6 +6,7 @@ import gc
 import random
 import sys
 import io
+from typing import Dict, List, Any, cast
 from dotenv import load_dotenv
 
 from hardware_engine import HardwareEngine
@@ -17,7 +18,13 @@ from daily_health_check import DailyHealthCheck
 import json
 
 load_dotenv()
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+# Melhora a compatibilidade UTF-8 no console do Windows
+try:
+    if sys.stdout.encoding.lower() != 'utf-8':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+except (AttributeError, io.UnsupportedOperation):
+    pass
 
 # --- CONFIGURAÇÃO GLOBAL ---
 PAPER_TRADING = True 
@@ -37,22 +44,25 @@ class JarvisPolymarketStable:
         self.telemetry = DailyHealthCheck(self.hw)
         
         # Gestão de Capital - 4 Caixas
-        self.caixas = {
+        self.caixas: Dict[str, Any] = {
             "CAIXA_01_ARB": {
                 "cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, 
                 "active_index": 0,
                 "targets": [
-                    {"yes": "110251828161543119357013227499774714771527179764174739487025581227481937033858", "no": "65176388692130651396848427090788038285140833850265294793449655516920659740141"}, # MicroStrategy
-                    {"yes": "21742457389871910906232367150745558299797034870034458925206969572242502127271", "no": "21742457389871910906232367150745558299797034870034458925206969572242502127271"}, # Bitcoin
-                    {"yes": "eth_yes_mock", "no": "eth_no_mock"} # Placeholder ativos secundários
+                    {"yes": "75467129615908319583031474642658885479135630431889036121812713428992454630178", "no": "3842963720267267286970642336860752782302644680156535061700039388405652129691"}, # BitBoy Convicted
+                    {"yes": "8501497159083948713316135768103773293754490207922884688769443031624417212426", "no": "2527312495175492857904889758552137141356236738032676480522356889996545113869"}, # RU-UK Ceasefire
+                    {"yes": "98022490269692409998126496127597032490334070080325855126491859374983463996227", "no": "53831553061883006530739877284105938919721408776239639687877978808906551086026"}  # Rihanna Album
                 ]
             },
             "CAIXA_02_MM":  {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "110251828161543119357013227499774714771527179764174739487025581227481937033858"},
-            "CAIXA_03_SENT": {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "110251828161543119357013227499774714771527179764174739487025581227481937033858"},
-            "CAIXA_04_SNI":  {"cash": 40.0,  "inventory": 0.0, "start": 40.0,  "balance": 40.0,  "roi": 0.0, "token_id": "sniper_active"}
+            "CAIXA_03_SENT": {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "65176388692130651396848427090788038285140833850265294793449655516920659740141"},
+            "CAIXA_04_SNI":  {"cash": 40.0,  "inventory": 0.0, "start": 40.0,  "balance": 40.0,  "roi": 0.0, "token_id": "90435811253665578014957380826505992530054077692143838383981805324273750424057"}
         }
+
         self.load_state() 
         self.is_running = False
+        self._last_save = 0
+        self._last_dash = 0
 
     def load_state(self):
         """Carrega o lucro e o estoque salvos anteriormente."""
@@ -61,7 +71,7 @@ class JarvisPolymarketStable:
                 with open(STATE_FILE, "r") as f:
                     saved_data = json.load(f)
                     # Mescla os dados salvos com a estrutura básica (mantendo IDs e alvos)
-                    for k, v in saved_data.items():
+                    for k, v in cast(Dict[str, Any], saved_data).items():
                         if k in self.caixas:
                             self.caixas[k].update(v)
                 self.logger.info("[RESTORE] Memória carregada: Retomando lucros anteriores.")
@@ -91,7 +101,7 @@ class JarvisPolymarketStable:
             handlers=[logging.StreamHandler(), logging.FileHandler("jarvis_stable.log", mode='w')]
         )
 
-    async def run_market_tick(self, name, data):
+    async def run_market_tick(self, name: str, data: Dict[str, Any]):
         start_compute = time.time()
         current_price = 0.5
 
@@ -101,22 +111,26 @@ class JarvisPolymarketStable:
             y_p = await self.core.get_real_price(target["yes"])
             n_p = await self.core.get_real_price(target["no"])
             soma = y_p + n_p
-            current_price = y_p
+            current_price = float(soma) # Na arbitragem, o preço do conjunto é a soma
             
             if random.random() > 0.95:
-                self.logger.info(f"[{name}] ESCANEANDO MERCADO #{data['active_index']} | SOMA: {soma:.4f}")
+                self.logger.info(f"[{name}] ESCANEANDO MERCADO #{data['active_index']} | SOMA: {float(soma):.4f}")
 
             if soma < 0.9995:
                 qty = 40.0
-                cost = soma * qty * 1.001
-                if data["cash"] >= cost:
-                    await self.core.execute_order(name, "buy", y_p, qty, target["yes"])
-                    await self.core.execute_order(name, "buy", n_p, qty, target["no"])
-                    data["cash"] = float(data["cash"] - cost)
-                    data["inventory"] = float(data["inventory"] + qty)
-                    self.logger.info(f"[{name}] 🎯 ARBITRAGEM GLOBAL DETECTADA!")
+                # Executa ordens e usa os custos reais retornados pela simulação
+                res_y = await self.core.execute_order(name, "buy", y_p, qty, target["yes"])
+                res_n = await self.core.execute_order(name, "buy", n_p, qty, target["no"])
+                
+                total_cost = res_y["cost"] + res_n["cost"]
+                if data["cash"] >= total_cost:
+                    data["cash"] -= total_cost
+                    data["inventory"] += qty
+                    self.logger.info(f"[{name}] 🎯 ARBITRAGEM EXECUTADA | CUSTO: {total_cost:.4f}")
+                else:
+                    self.logger.warning(f"[{name}] Saldo insuficiente para arbitragem!")
 
-            data["active_index"] = (data["active_index"] + 1) % len(data["targets"])
+            data["active_index"] = (int(data["active_index"]) + 1) % len(cast(list, data["targets"]))
 
         # --- CAIXA 02: MARKET MAKING ---
         elif name == "CAIXA_02_MM":
@@ -125,15 +139,15 @@ class JarvisPolymarketStable:
             if inv < 50:
                 buy_p = current_price * 0.998
                 res = await self.core.execute_order(name, "buy", buy_p, 10.0, data["token_id"])
-                if cash >= res["cost"]:
-                    data["cash"] -= res["cost"]
-                    data["inventory"] += res["amount"]
+                if float(cash) >= float(res["cost"]):
+                    data["cash"] = float(data["cash"]) - float(res["cost"])
+                    data["inventory"] = float(data["inventory"]) + float(res["amount"])
                     self.logger.info(f"[{name}] MM COMPRA")
             elif inv >= 10:
                 sell_p = current_price * 1.012
                 res = await self.core.execute_order(name, "sell", sell_p, 10.0, data["token_id"])
-                data["cash"] += res["cost"]
-                data["inventory"] -= res["amount"]
+                data["cash"] = float(data["cash"]) + float(res["cost"])
+                data["inventory"] = float(data["inventory"]) - float(res["amount"])
                 self.logger.info(f"[{name}] MM VENDA (LUCRO)")
 
         # --- CAIXA 03: SENTIMENTO ---
@@ -143,14 +157,14 @@ class JarvisPolymarketStable:
             if random.random() > 0.6: # Agressivo
                 if inv < 80:
                     res = await self.core.execute_order(name, "buy", current_price * 1.001, 15.0, data["token_id"])
-                    if cash >= res["cost"]:
-                        data["cash"] -= res["cost"]
-                        data["inventory"] += res["amount"]
+                    if float(cash) >= float(res["cost"]):
+                        data["cash"] = float(data["cash"]) - float(res["cost"])
+                        data["inventory"] = float(data["inventory"]) + float(res["amount"])
                         self.logger.info(f"[{name}] SENTIMENTO: ENTRADA")
                 elif inv >= 15:
                     res = await self.core.execute_order(name, "sell", current_price * 1.007, 15.0, data["token_id"])
-                    data["cash"] += res["cost"]
-                    data["inventory"] -= res["amount"]
+                    data["cash"] = float(data["cash"]) + float(res["cost"])
+                    data["inventory"] = float(data["inventory"]) - float(res["amount"])
                     self.logger.info(f"[{name}] SENTIMENTO: LUCRO")
 
         # --- CAIXA 04: SNIPER ---
@@ -161,20 +175,22 @@ class JarvisPolymarketStable:
                 cost = current_price * qty * 1.001
                 if data["cash"] >= cost:
                     res = await self.core.execute_order(name, "buy", current_price, qty, data["token_id"])
-                    data["cash"] -= res["cost"]
-                    data["inventory"] += res["amount"]
-                    self.logger.info(f"[{name}] 🔫 SNIPER DISPAROU!")
+                    if res["status"] == "FILLED":
+                        data["cash"] = float(data["cash"]) - float(res["cost"])
+                        data["inventory"] = float(data["inventory"]) + float(res["amount"])
+                        self.logger.info(f"[{name}] 🔫 SNIPER DISPAROU!")
 
         # --- ATUALIZAÇÃO PATRIMONIAL ---
         inv_v = float(data["inventory"]) * current_price
-        patrimonio = float(data["cash"] + inv_v)
+        patrimonio = float(float(data["cash"]) + inv_v)
         
         # Lucro para o Sniper (10%)
         lucro = patrimonio - data["balance"]
         if lucro > 0.001 and name != "CAIXA_04_SNI":
             taxa = lucro * 0.10
-            data["cash"] -= taxa
-            self.caixas["CAIXA_04_SNI"]["cash"] += taxa
+            data["cash"] = float(data["cash"]) - taxa
+            # Com a tipagem explícita de self.caixas, o analisador não se confunde mais
+            self.caixas["CAIXA_04_SNI"]["cash"] = float(self.caixas["CAIXA_04_SNI"]["cash"]) + taxa
             patrimonio -= taxa
 
         data["balance"] = float(patrimonio)
@@ -188,23 +204,32 @@ class JarvisPolymarketStable:
         self.logger.info(f"[BOOT] Jarvis {self.os_version} Inicializado com Sucesso.")
         
         while self.is_running:
-            if not self.telemetry.check_system_viability(0, self.core.latency_metrics):
+            if not self.telemetry.check_system_viability(0):
                 self.logger.critical("ALERTA TÉRMICO: Encerrando por segurança.")
                 break
             
             tasks = [self.run_market_tick(n, d) for n, d in self.caixas.items()]
             await asyncio.gather(*tasks)
             
-            # Persistência de lucro a cada 30 segundos
-            if int(time.time()) % 30 == 0:
+            # Persistência de lucro e Dashboard (Otimizado)
+            t_now = int(time.time())
+            
+            # Dashboard a cada 1 segundo
+            if t_now != self._last_dash:
+                self.telemetry.export_dashboard_data(self.caixas, self.core.latency_metrics, mode="POLYMARKET-TURBO")
+                self._last_dash = t_now
+                
+            # Salva estado a cada 60 segundos
+            if t_now % 60 == 0 and t_now != self._last_save:
                 self.save_state()
                 gc.collect()
-            
-            self.telemetry.export_dashboard_data(self.caixas, self.core.latency_metrics, mode="POLYMARKET-TURBO")
+                self._last_save = t_now
+
             await asyncio.sleep(TICK_RATE)
 
-    def stop(self):
+    async def stop(self):
         self.is_running = False
+        await self.core.close()
         self.logger.info("Sistema encerrado.")
 
 if __name__ == "__main__":
@@ -212,4 +237,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(jarvis.main_loop())
     except KeyboardInterrupt:
-        jarvis.stop()
+        asyncio.run(jarvis.stop())
