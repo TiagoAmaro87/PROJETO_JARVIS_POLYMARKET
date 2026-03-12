@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.log
+jarvis_state.json
+live_status.json
+.env
+venv/
+env/
