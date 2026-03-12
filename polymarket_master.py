@@ -130,77 +130,55 @@ class JarvisPolymarketStable:
         start_compute = time.time()
         current_price = 0.5
 
-        # --- CAIXA 01: ARBITRAGEM (MODO HUNTER) ---
+        # --- CAIXA 01: ARBITRAGEM (COMPLETAMENTE DESATIVADA) ---
         if name == "CAIXA_01_ARB":
-            target = data["targets"][data["active_index"]]
-            y_p = await self.core.get_real_price(target["yes"])
-            n_p = await self.core.get_real_price(target["no"])
-            soma = y_p + n_p
-            current_price = float(soma) # Na arbitragem, o preço do conjunto é a soma
-            
-            if random.random() > 0.98:
-                self.logger.info(f"[{name}] ESCANEANDO MERCADO #{data['active_index']} | SOMA: {float(soma):.4f}")
-
-            # --- CÁLCULO DE VIABILIDADE REAL (NET PROFIT) ---
-            qty = 60.0 # Aumentamos o volume para diluir o custo do GAS
-            est_gas = self.core.polygon_gas_price * 2 # YES + NO
-            payout = qty # Cada par YES/NO vale $1.00 no vencimento
-            est_cost = (y_p + n_p) * qty * (1 + self.core.fee_rate) + est_gas
-            
-            potential_net_profit = payout - est_cost
-            
-            # Só executa se o lucro líquido estimado for maior que $0.20 (Buffer de segurança)
-            if potential_net_profit > 0.20:
-                # Executa ordens e usa os custos reais retornados pela simulação
-                res_y = await self.core.execute_order(name, "buy", y_p, qty, target["yes"])
-                res_n = await self.core.execute_order(name, "buy", n_p, qty, target["no"])
-                
-                total_cost = float(res_y["cost"]) + float(res_n["cost"])
-                if float(data["cash"]) >= total_cost:
-                    data["cash"] = float(data["cash"]) - total_cost
-                    data["inventory"] = float(data["inventory"]) + qty
-                    self.logger.info(f"[{name}] 🎯 ARBITRAGEM INTELIGENTE | Lucro Est: ${potential_net_profit:.2f}")
-                    self.log_trade(name, "BUY_ARB", total_cost, qty, target["yes"])
-                else:
-                    self.logger.warning(f"[{name}] Saldo insuficiente para arbitragem inteligente!")
-
-            data["active_index"] = (int(data["active_index"]) + 1) % len(cast(list, data["targets"]))
+            self.logger.warning(f"[{name}] BLOQUEADA POR ORDEM DO USUÁRIO.")
+            return 
 
         # --- CAIXA 02: MARKET MAKING ---
         elif name == "CAIXA_02_MM":
             current_price = await self.core.get_real_price(data["token_id"])
             inv, cash = data["inventory"], data["cash"]
-            if inv < 50:
+            qty = 40.0 # Aumentado para diluir GAS
+
+            if inv < 100:
                 buy_p = current_price * 0.998
-                res = await self.core.execute_order(name, "buy", buy_p, 10.0, data["token_id"])
-                if float(cash) >= float(res["cost"]):
-                    data["cash"] = float(data["cash"]) - float(res["cost"])
-                    data["inventory"] = float(data["inventory"]) + float(res["amount"])
-                    self.logger.info(f"[{name}] MM COMPRA")
-            elif inv >= 10:
+                # Simulação de viabilidade: spread deve ser > 2x GAS
+                if (current_price - buy_p) * qty > (self.core.polygon_gas_price * 2):
+                    res = await self.core.execute_order(name, "buy", buy_p, qty, data["token_id"])
+                    if float(cash) >= float(res["cost"]):
+                        data["cash"] = float(data["cash"]) - float(res["cost"])
+                        data["inventory"] = float(data["inventory"]) + float(res["amount"])
+                        self.logger.info(f"[{name}] MM COMPRA EFICIENTE (Vol: {qty})")
+            elif inv >= qty:
                 sell_p = current_price * 1.012
-                res = await self.core.execute_order(name, "sell", sell_p, 10.0, data["token_id"])
-                data["cash"] = float(data["cash"]) + float(res["cost"])
-                data["inventory"] = float(data["inventory"]) - float(res["amount"])
-                self.logger.info(f"[{name}] MM VENDA (LUCRO)")
-                self.log_trade(name, "SELL_MM", res["cost"], res["amount"], data["token_id"])
+                if (sell_p - current_price) * qty > (self.core.polygon_gas_price * 2):
+                    res = await self.core.execute_order(name, "sell", sell_p, qty, data["token_id"])
+                    data["cash"] = float(data["cash"]) + float(res["cost"])
+                    data["inventory"] = float(data["inventory"]) - float(res["amount"])
+                    self.logger.info(f"[{name}] MM VENDA EFICIENTE (Lucro Real)")
+                    self.log_trade(name, "SELL_MM", res["cost"], res["amount"], data["token_id"])
 
         # --- CAIXA 03: SENTIMENTO ---
         elif name == "CAIXA_03_SENT":
             current_price = await self.core.get_real_price(data["token_id"])
             inv, cash = data["inventory"], data["cash"]
-            if random.random() > 0.6: # Agressivo
-                if inv < 80:
-                    res = await self.core.execute_order(name, "buy", current_price * 1.001, 15.0, data["token_id"])
-                    if float(cash) >= float(res["cost"]):
-                        data["cash"] = float(data["cash"]) - float(res["cost"])
-                        data["inventory"] = float(data["inventory"]) + float(res["amount"])
-                        self.logger.info(f"[{name}] SENTIMENTO: ENTRADA")
-                elif inv >= 15:
-                    res = await self.core.execute_order(name, "sell", current_price * 1.007, 15.0, data["token_id"])
+            qty = 50.0 # Aumentado para eficiência de Gás
+
+            if random.random() > 0.7: # Menos agressivo para evitar over-trading
+                if inv < 150:
+                    # Só entra se a tendência for forte e compensar o Gás
+                    if (current_price * 0.01) * qty > (self.core.polygon_gas_price * 3):
+                        res = await self.core.execute_order(name, "buy", current_price * 1.001, qty, data["token_id"])
+                        if float(cash) >= float(res["cost"]):
+                            data["cash"] = float(data["cash"]) - float(res["cost"])
+                            data["inventory"] = float(data["inventory"]) + float(res["amount"])
+                            self.logger.info(f"[{name}] SENTIMENTO: ENTRADA FILTRADA")
+                elif inv >= qty:
+                    res = await self.core.execute_order(name, "sell", current_price * 1.007, qty, data["token_id"])
                     data["cash"] = float(data["cash"]) + float(res["cost"])
                     data["inventory"] = float(data["inventory"]) - float(res["amount"])
-                    self.logger.info(f"[{name}] SENTIMENTO: LUCRO")
+                    self.logger.info(f"[{name}] SENTIMENTO: LUCRO REAL")
 
         # --- CAIXA 04: SNIPER ---
         elif name == "CAIXA_04_SNI":
@@ -249,19 +227,8 @@ class JarvisPolymarketStable:
             # Check conditions based on strategy
             strategy = target["strategy"]
             if strategy == "arbitrage":
-                y_p = await self.core.get_real_price(target["token_ids"]["yes"])
-                n_p = await self.core.get_real_price(target["token_ids"]["no"])
-                soma = y_p + n_p
-                if soma < target["threshold"]:
-                    # GATILHO!
-                    qty = target.get("max_investment", 50.0) / soma
-                    res_y = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, target["token_ids"]["yes"])
-                    res_n = await self.core.execute_order(f"OPP_{t_id}", "buy", n_p, qty, target["token_ids"]["no"])
-                    cost = res_y["cost"] + res_n["cost"]
-                    self.active_opportunities[t_id] = {
-                        "name": target["name"], "cash": 0.0, "inventory": qty, "start": cost, "balance": qty, "roi": 0.0, "strategy": "Arbitrage"
-                    }
-                    self.logger.info(f"[TRIGGER] Oportunidade ARB Ativada: {target['name']}")
+                # DESATIVADO COMPLETAMENTE POR ORDEM DO USUÁRIO
+                continue
 
             elif strategy == "sniper":
                 curr_p = await self.core.get_real_price(target["token_ids"]["yes"])
