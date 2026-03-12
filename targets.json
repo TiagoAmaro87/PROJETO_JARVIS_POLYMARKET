@@ -13,15 +13,25 @@
             "enabled": true
         },
         {
-            "id": "RU-UK-CEASEFIRE",
-            "name": "RU-UK Ceasefire by April?",
+            "id": "BTC-PRICE-MARCH",
+            "name": "Bitcoin Price > $80k end of March?",
             "token_ids": {
-                "yes": "8501497159083948713316135768103773293754490207922884688769443031624417212426",
-                "no": "2527312495175492857904889758552137141356236738032676480522356889996545113869"
+                "yes": "65176388692130651396848427090788038285140833850265294793449655516920659740141"
             },
-            "strategy": "arbitrage",
-            "threshold": 0.9995,
-            "max_investment": 50.0,
+            "strategy": "sentiment",
+            "threshold": 0.65,
+            "max_investment": 100.0,
+            "enabled": true
+        },
+        {
+            "id": "RIHANNA-ALBUM",
+            "name": "Rihanna New Album by 2026?",
+            "token_ids": {
+                "yes": "90435811253665578014957380826505992530054077692143838383981805324273750424057"
+            },
+            "strategy": "sniper",
+            "threshold": 0.10,
+            "max_investment": 20.0,
             "enabled": true
         }
     ],
