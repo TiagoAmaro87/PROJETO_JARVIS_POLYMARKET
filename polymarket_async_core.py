@@ -30,6 +30,19 @@ class PolymarketAsyncCore:
             self._session = aiohttp.ClientSession()
         return self._session
 
+    async def get_active_markets(self):
+        """Busca mercados em destaque/ativos para o scanner global."""
+        url = "https://clob.polymarket.com/markets"
+        try:
+            curr_session = await self.get_session()
+            async with curr_session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                return []
+        except Exception as e:
+            self.logger.error(f"Erro ao buscar mercados ativos: {e}")
+            return []
+
     async def get_real_price(self, token_id: str):
         """Busca o preço médio real (midpoint) do CLOB do Polymarket."""
         start_time = time.time()

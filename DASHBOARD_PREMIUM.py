@@ -218,18 +218,59 @@ with tab_markets:
     st.markdown("### 🔭 Market Explorer")
     st.info("Esta aba monitora mercados em tempo real sem afetar o capital das caixas principais.")
     
+    explorer_prices = payload.get("explorer_prices", {})
+    
+    # --- GLOBAL DISCOVERY SECTION ---
+    st.write("#### 🌍 Global Discovery Scanner (Trending)")
+    discovered_list = [t for t in payload.get("explorer_prices", {}).keys() if "GLOBAL_" in t][:21] # Limite para performance
+    
+    if discovered_list:
+        with st.container(height=400):
+            g_cols = st.columns(3)
+            # Extrair os targets reais pelo nome (precisamos do dicionário original se possível, 
+            # mas vamos simplificar usando o ID por enquanto)
+            for j, g_id in enumerate(discovered_list):
+                if "_yes" not in g_id: continue
+                clean_id = g_id.replace("_yes", "")
+                with g_cols[j % 3]:
+                    price = explorer_prices.get(g_id, 0)
+                    st.markdown(f"""
+                    <div style='background:#161b22; padding:10px; border-radius:5px; border:1px solid #30363d; margin-bottom:10px;'>
+                        <p style='font-size:0.8em; color:#8b949e; margin:0;'>ID: {clean_id}</p>
+                        <p style='font-weight:bold; margin:0;'>PREÇO: ${price:.3f}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+    else:
+        st.info("Scanner aguardando próxima rodada de descoberta global...")
+
+    st.write("---")
     if os.path.exists("targets.json"):
         with open("targets.json", "r") as f:
             targets_data = json.load(f)
-            st.write("#### Mercados em Observação:")
-            for t in targets_data.get("targets", []):
-                with st.expander(f"📍 {t['name']}"):
-                    st.write(f"ID: {t['id']}")
-                    st.write(f"Estratégia: {t['strategy']}")
-                    st.write(f"Threshold: {t['threshold']}")
-                    st.progress(0.4) # Simulação de atividade
+            st.write("#### 📡 Alvos VIP (targets.json):")
+            
+            ex_cols = st.columns(2)
+            # Filtra apenas os manuais (não globais)
+            manual_targets = [t for t in targets_data.get("targets", [])]
+            for i, t in enumerate(manual_targets):
+                with ex_cols[i % 2]:
+                    with st.container(border=True):
+                        st.markdown(f"**📍 {t['name']}**")
+                        
+                        y_p = explorer_prices.get(f"{t['id']}_yes", 0.5)
+                        n_p = explorer_prices.get(f"{t['id']}_no", 0)
+                        
+                        p_col1, p_col2 = st.columns(2)
+                        p_col1.metric("YES", f"${y_p:.3f}")
+                        if n_p > 0:
+                            p_col2.metric("NO", f"${n_p:.3f}")
+                        
+                        st.caption(f"Estratégia: {t['strategy'].upper()} | Gatilho: < {t['threshold']}")
+                        if t['strategy'] == "sniper":
+                            prog = min(1.0, t['threshold'] / y_p) if y_p > 0 else 0
+                            st.progress(prog, text=f"Proximidade: {prog*100:.1f}%")
     else:
-        st.warning("Arquivo targets.json não encontrado para expansão.")
+        st.warning("Arquivo targets.json não encontrado.")
 
 st.markdown(f"""
     <div style='text-align: center; color: #8b949e; padding: 20px;'>

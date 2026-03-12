@@ -72,6 +72,8 @@ class JarvisPolymarketStable:
         self._last_history_save = 0
         self.trades_file = "trades_history.json"
         self.history_file = "wealth_history.json"
+        self._last_discovery = 0
+        self.discovered_targets: List[Dict] = []
         
         # Load or init trade history
         if not os.path.exists(self.trades_file):
@@ -102,6 +104,43 @@ class JarvisPolymarketStable:
                 self.logger.info(f"[EXPLORER] {len(self.explorer_targets)} alvos carregados para monitoramento.")
             except Exception as e:
                 self.logger.error(f"[EXPLORER] Erro ao carregar targets: {e}")
+
+    async def run_global_discovery(self):
+        """Busca novos mercados tendendo na Polymarket para o Scanner Global."""
+        t_now = time.time()
+        if t_now - self._last_discovery < 600: # A cada 10 minutos
+            return
+            
+        self.logger.info("[GLOBAL] Iniciando scanner de descoberta em toda a Polymarket...")
+        markets_resp = await self.core.get_active_markets()
+        
+        valid_count = 0
+        new_targets = []
+        
+        # O CLOB retorna {"data": [...], "next_cursor": ...}
+        markets = markets_resp.get("data", []) if isinstance(markets_resp, dict) else []
+        
+        for m in markets:
+            # Filtro de Liquidez e Validade
+            if not isinstance(m, dict): continue
+            q_id = m.get("condition_id")
+            tokens = m.get("tokens", [])
+            
+            if len(tokens) >= 2 and q_id:
+                new_targets.append({
+                    "id": f"GLOBAL_{q_id[:8]}",
+                    "name": m.get("question", "Unknown Market"),
+                    "token_ids": {"yes": tokens[0].get("token_id"), "no": tokens[1].get("token_id")},
+                    "strategy": "sniper", # Estratégia padrão para novos mercados
+                    "threshold": 0.05,    # Buscar "bilhetes premiados"
+                    "max_investment": 10.0,
+                    "is_global": True
+                })
+                valid_count += 1
+        
+        self.discovered_targets = new_targets
+        self._last_discovery = t_now
+        self.logger.info(f"[GLOBAL] Scanner concluiu: {valid_count} novos mercados adicionados ao radar.")
 
     def save_state(self):
         """Salva o progresso financeiro no disco."""
@@ -214,42 +253,50 @@ class JarvisPolymarketStable:
 
     async def run_explorer_scan(self):
         """Varre os alvos do Explorer e dispara ordens se as condições forem atendidas."""
-        for target in self.explorer_targets:
+        self.explorer_prices: Dict[str, float] = {}
+        
+        # Unifica alvos manuais + descobertos globalmente
+        all_targets = self.explorer_targets + self.discovered_targets
+        
+        for target in all_targets:
             t_id = target["id"]
+            
+            # Busca preços reais (apenas se tiver YES/NO configurado)
+            y_token = target["token_ids"].get("yes")
+            if not y_token: continue
+            
+            y_p = await self.core.get_real_price(y_token)
+            self.explorer_prices[f"{t_id}_yes"] = y_p
+
             if t_id in self.active_opportunities:
-                # Se já está ativo, apenas atualiza ROI (simulado ou real)
                 opp = self.active_opportunities[t_id]
-                curr_p = await self.core.get_real_price(target["token_ids"].get("yes"))
-                opp["balance"] = opp["cash"] + (opp["inventory"] * curr_p)
+                opp["balance"] = opp["cash"] + (opp["inventory"] * y_p)
                 opp["roi"] = (opp["balance"] - opp["start"]) / opp["start"] if opp["start"] > 0 else 0
                 continue
 
-            # Check conditions based on strategy
-            strategy = target["strategy"]
-            if strategy == "arbitrage":
-                # DESATIVADO COMPLETAMENTE POR ORDEM DO USUÁRIO
+            # --- ESTRATÉGIA AGRESSIVA: LOTTERY TICKET (SNIPER EXTREMO) ---
+            if y_p <= 0.05 and y_p > 0.005: 
+                # Se detectarmos algo ultra-barato com potencial
+                qty = 100.0 # "Aposta" pequena para ganho gigante
+                res = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, y_token)
+                self.active_opportunities[t_id] = {
+                    "name": f"🍀 {target['name'][:30]}...", 
+                    "cash": 0.0, "inventory": qty, "start": res["cost"], 
+                    "balance": res["cost"], "roi": 0.0, "strategy": "Extreme Sniper"
+                }
+                self.logger.info(f"🚀 [EXPONENCIAL] Bilhete Premiado Comprado: {target['name']}")
                 continue
 
-            elif strategy == "sniper":
-                curr_p = await self.core.get_real_price(target["token_ids"]["yes"])
-                if curr_p < target["threshold"]:
-                    qty = target.get("max_investment", 20.0) / curr_p
-                    res = await self.core.execute_order(f"OPP_{t_id}", "buy", curr_p, qty, target["token_ids"]["yes"])
-                    self.active_opportunities[t_id] = {
-                        "name": target["name"], "cash": 0.0, "inventory": qty, "start": res["cost"], "balance": res["cost"], "roi": 0.0, "strategy": "Sniper"
-                    }
-                    self.logger.info(f"[TRIGGER] Oportunidade Sniper Ativada: {target['name']}")
-
-            elif strategy == "sentiment":
-                # Simulação simplificada de sentimento
-                curr_p = await self.core.get_real_price(target["token_ids"]["yes"])
-                if random.random() > 0.99: # Trigger raro para simular análise de sentimento profunda
-                    qty = target.get("max_investment", 100.0) / curr_p
-                    res = await self.core.execute_order(f"OPP_{t_id}", "buy", curr_p, qty, target["token_ids"]["yes"])
-                    self.active_opportunities[t_id] = {
-                        "name": target["name"], "cash": 0.0, "inventory": qty, "start": res["cost"], "balance": res["cost"], "roi": 0.0, "strategy": "Sentiment"
-                    }
-                    self.logger.info(f"[TRIGGER] Oportunidade Sentiment Ativada: {target['name']}")
+            # Lógica Normal para alvos manuais
+            strategy = target.get("strategy")
+            if strategy == "sniper" and y_p < target.get("threshold", 0.10):
+                qty = target.get("max_investment", 20.0) / y_p
+                res = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, y_token)
+                self.active_opportunities[t_id] = {
+                    "name": target["name"], "cash": 0.0, "inventory": qty, 
+                    "start": res["cost"], "balance": res["cost"], "roi": 0.0, "strategy": "Sniper"
+                }
+                self.logger.info(f"🔫 [EXPLORER] Sniper Alvo Ativado: {target['name']}")
 
     def log_trade(self, pillar: str, type: str, cost: float, amount: float, token: str):
         """Registra uma operação no histórico de trades."""
@@ -309,7 +356,10 @@ class JarvisPolymarketStable:
             tasks = [self.run_market_tick(n, d) for n, d in self.caixas.items()]
             await asyncio.gather(*tasks)
 
-            # 2. Run Explorer Scan
+            # 2. Run Global Discovery (Scanner em Massa)
+            await self.run_global_discovery()
+
+            # 3. Run Explorer Scan (Oportunista)
             await self.run_explorer_scan()
             
             # Persistência de lucro e Dashboard (Otimizado)
@@ -319,7 +369,8 @@ class JarvisPolymarketStable:
             if t_now != self._last_dash:
                 payload = {
                     "finance": self.caixas,
-                    "active_opportunities": self.active_opportunities
+                    "active_opportunities": self.active_opportunities,
+                    "explorer_prices": self.explorer_prices
                 }
                 self.telemetry.export_dashboard_data(payload, self.core.latency_metrics, mode="POLYMARKET-TURBO")
                 self._last_dash = t_now
