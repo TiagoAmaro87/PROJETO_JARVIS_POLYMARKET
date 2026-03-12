@@ -122,23 +122,31 @@ class JarvisPolymarketStable:
             soma = y_p + n_p
             current_price = float(soma) # Na arbitragem, o preço do conjunto é a soma
             
-            if random.random() > 0.95:
+            if random.random() > 0.98:
                 self.logger.info(f"[{name}] ESCANEANDO MERCADO #{data['active_index']} | SOMA: {float(soma):.4f}")
 
-            if soma < 0.9995:
-                qty = 40.0
+            # --- CÁLCULO DE VIABILIDADE REAL (NET PROFIT) ---
+            qty = 60.0 # Aumentamos o volume para diluir o custo do GAS
+            est_gas = self.core.polygon_gas_price * 2 # YES + NO
+            payout = qty # Cada par YES/NO vale $1.00 no vencimento
+            est_cost = (y_p + n_p) * qty * (1 + self.core.fee_rate) + est_gas
+            
+            potential_net_profit = payout - est_cost
+            
+            # Só executa se o lucro líquido estimado for maior que $0.20 (Buffer de segurança)
+            if potential_net_profit > 0.20:
                 # Executa ordens e usa os custos reais retornados pela simulação
                 res_y = await self.core.execute_order(name, "buy", y_p, qty, target["yes"])
                 res_n = await self.core.execute_order(name, "buy", n_p, qty, target["no"])
                 
-                total_cost = res_y["cost"] + res_n["cost"]
-                if data["cash"] >= total_cost:
-                    data["cash"] -= total_cost
-                    data["inventory"] += qty
-                    self.logger.info(f"[{name}] 🎯 ARBITRAGEM EXECUTADA | CUSTO: {total_cost:.4f}")
+                total_cost = float(res_y["cost"]) + float(res_n["cost"])
+                if float(data["cash"]) >= total_cost:
+                    data["cash"] = float(data["cash"]) - total_cost
+                    data["inventory"] = float(data["inventory"]) + qty
+                    self.logger.info(f"[{name}] 🎯 ARBITRAGEM INTELIGENTE | Lucro Est: ${potential_net_profit:.2f}")
                     self.log_trade(name, "BUY_ARB", total_cost, qty, target["yes"])
                 else:
-                    self.logger.warning(f"[{name}] Saldo insuficiente para arbitragem!")
+                    self.logger.warning(f"[{name}] Saldo insuficiente para arbitragem inteligente!")
 
             data["active_index"] = (int(data["active_index"]) + 1) % len(cast(list, data["targets"]))
 
