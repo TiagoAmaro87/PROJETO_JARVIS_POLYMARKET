@@ -1,0 +1,20 @@
+services:
+  jarvis-master:
+    build: .
+    container_name: jarvis-master
+    restart: always
+    env_file: .env
+    volumes:
+      - .:/app
+    command: python polymarket_master.py
+
+  jarvis-dashboard:
+    build: .
+    container_name: jarvis-dashboard
+    restart: always
+    ports:
+      - "8501:8501"
+    env_file: .env
+    volumes:
+      - .:/app
+    command: streamlit run DASHBOARD_PREMIUM.py --server.address 0.0.0.0 --server.port 8501
