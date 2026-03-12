@@ -60,6 +60,11 @@ class JarvisPolymarketStable:
             "CAIXA_04_SNI":  {"cash": 40.0,  "inventory": 0.0, "start": 40.0,  "balance": 40.0,  "roi": 0.0, "token_id": "90435811253665578014957380826505992530054077692143838383981805324273750424057"}
         }
 
+        # Gestão de Oportunidades (Explorer -> Active Trades)
+        self.active_opportunities: Dict[str, Any] = {}
+        self.explorer_targets: List[Dict] = []
+        self.load_explorer_targets()
+
         self.load_state() 
         self.is_running = False
         self._last_save = 0
@@ -86,6 +91,17 @@ class JarvisPolymarketStable:
                 self.logger.info("[RESTORE] Memória carregada: Retomando lucros anteriores.")
             except Exception as e:
                 self.logger.error(f"[RESTORE] Erro ao carregar memória: {e}")
+
+    def load_explorer_targets(self):
+        """Carrega os alvos do Explorer do arquivo targets.json."""
+        if os.path.exists("targets.json"):
+            try:
+                with open("targets.json", "r") as f:
+                    data = json.load(f)
+                    self.explorer_targets = data.get("targets", [])
+                self.logger.info(f"[EXPLORER] {len(self.explorer_targets)} alvos carregados para monitoramento.")
+            except Exception as e:
+                self.logger.error(f"[EXPLORER] Erro ao carregar targets: {e}")
 
     def save_state(self):
         """Salva o progresso financeiro no disco."""
@@ -218,6 +234,56 @@ class JarvisPolymarketStable:
         
         self.core.latency_metrics["compute"] = (time.time() - start_compute) * 1000
 
+    async def run_explorer_scan(self):
+        """Varre os alvos do Explorer e dispara ordens se as condições forem atendidas."""
+        for target in self.explorer_targets:
+            t_id = target["id"]
+            if t_id in self.active_opportunities:
+                # Se já está ativo, apenas atualiza ROI (simulado ou real)
+                opp = self.active_opportunities[t_id]
+                curr_p = await self.core.get_real_price(target["token_ids"].get("yes"))
+                opp["balance"] = opp["cash"] + (opp["inventory"] * curr_p)
+                opp["roi"] = (opp["balance"] - opp["start"]) / opp["start"] if opp["start"] > 0 else 0
+                continue
+
+            # Check conditions based on strategy
+            strategy = target["strategy"]
+            if strategy == "arbitrage":
+                y_p = await self.core.get_real_price(target["token_ids"]["yes"])
+                n_p = await self.core.get_real_price(target["token_ids"]["no"])
+                soma = y_p + n_p
+                if soma < target["threshold"]:
+                    # GATILHO!
+                    qty = target.get("max_investment", 50.0) / soma
+                    res_y = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, target["token_ids"]["yes"])
+                    res_n = await self.core.execute_order(f"OPP_{t_id}", "buy", n_p, qty, target["token_ids"]["no"])
+                    cost = res_y["cost"] + res_n["cost"]
+                    self.active_opportunities[t_id] = {
+                        "name": target["name"], "cash": 0.0, "inventory": qty, "start": cost, "balance": qty, "roi": 0.0, "strategy": "Arbitrage"
+                    }
+                    self.logger.info(f"[TRIGGER] Oportunidade ARB Ativada: {target['name']}")
+
+            elif strategy == "sniper":
+                curr_p = await self.core.get_real_price(target["token_ids"]["yes"])
+                if curr_p < target["threshold"]:
+                    qty = target.get("max_investment", 20.0) / curr_p
+                    res = await self.core.execute_order(f"OPP_{t_id}", "buy", curr_p, qty, target["token_ids"]["yes"])
+                    self.active_opportunities[t_id] = {
+                        "name": target["name"], "cash": 0.0, "inventory": qty, "start": res["cost"], "balance": res["cost"], "roi": 0.0, "strategy": "Sniper"
+                    }
+                    self.logger.info(f"[TRIGGER] Oportunidade Sniper Ativada: {target['name']}")
+
+            elif strategy == "sentiment":
+                # Simulação simplificada de sentimento
+                curr_p = await self.core.get_real_price(target["token_ids"]["yes"])
+                if random.random() > 0.99: # Trigger raro para simular análise de sentimento profunda
+                    qty = target.get("max_investment", 100.0) / curr_p
+                    res = await self.core.execute_order(f"OPP_{t_id}", "buy", curr_p, qty, target["token_ids"]["yes"])
+                    self.active_opportunities[t_id] = {
+                        "name": target["name"], "cash": 0.0, "inventory": qty, "start": res["cost"], "balance": res["cost"], "roi": 0.0, "strategy": "Sentiment"
+                    }
+                    self.logger.info(f"[TRIGGER] Oportunidade Sentiment Ativada: {target['name']}")
+
     def log_trade(self, pillar: str, type: str, cost: float, amount: float, token: str):
         """Registra uma operação no histórico de trades."""
         trade = {
@@ -272,15 +338,23 @@ class JarvisPolymarketStable:
                 self.logger.critical("ALERTA TÉRMICO: Encerrando por segurança.")
                 break
             
+            # 1. Run Fixed Pillars
             tasks = [self.run_market_tick(n, d) for n, d in self.caixas.items()]
             await asyncio.gather(*tasks)
+
+            # 2. Run Explorer Scan
+            await self.run_explorer_scan()
             
             # Persistência de lucro e Dashboard (Otimizado)
             t_now = int(time.time())
             
             # Dashboard a cada 1 segundo
             if t_now != self._last_dash:
-                self.telemetry.export_dashboard_data(self.caixas, self.core.latency_metrics, mode="POLYMARKET-TURBO")
+                payload = {
+                    "finance": self.caixas,
+                    "active_opportunities": self.active_opportunities
+                }
+                self.telemetry.export_dashboard_data(payload, self.core.latency_metrics, mode="POLYMARKET-TURBO")
                 self._last_dash = t_now
                 
             # Salva estado a cada 60 segundos
