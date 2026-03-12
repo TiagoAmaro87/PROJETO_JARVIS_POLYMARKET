@@ -102,11 +102,12 @@ with tab_control:
     caixas_cols = st.columns(4)
     
     for i, (name, d) in enumerate(finance.items()):
+        label = name.replace("CAIXA_01_ARB", "🛡️ ARBITRAGE").replace("CAIXA_02_MM", "🤖 MARKET MAKER").replace("CAIXA_03_SENT", "🧠 SENTIMENT").replace("CAIXA_04_SNI", "💎 SAFE GRINDER")
         with caixas_cols[i]:
             roi_val = d['roi'] * 100
             st.markdown(f"""
             <div class='status-card'>
-                <h3 style='margin-top:0;'>{name}</h3>
+                <h3 style='margin-top:0;'>{label}</h3>
                 <p>Cash: <span style='color:white'>${d['cash']:.2f}</span></p>
                 <p>Inv: <span style='color:white'>${d['inventory'] * 0.5:.2f}</span></p>
                 <p style='font-size:1.2em'>ROI: <span style='color:{"#3fb950" if roi_val >= 0 else "#f85149"}'>{roi_val:.2f}%</span></p>
@@ -225,28 +226,26 @@ with tab_markets:
     
     explorer_prices = payload.get("explorer_prices", {})
     
-    # --- GLOBAL DISCOVERY SECTION ---
-    st.write("#### 🌍 Global Discovery Scanner (Trending)")
-    discovered_list = [t for t in payload.get("explorer_prices", {}).keys() if "GLOBAL_" in t][:21] # Limite para performance
+    # --- WHALE DISCOVERY SECTION ---
+    st.write("#### 🐋 Whale Predator Scanner (Smart Money Flow)")
+    discovered_list = [t for t in explorer_prices.keys() if "WHALE_" in t][:24]
     
     if discovered_list:
-        with st.container(height=400):
+        with st.container(height=450):
             g_cols = st.columns(3)
-            # Extrair os targets reais pelo nome (precisamos do dicionário original se possível, 
-            # mas vamos simplificar usando o ID por enquanto)
             for j, g_id in enumerate(discovered_list):
                 if "_yes" not in g_id: continue
-                clean_id = g_id.replace("_yes", "")
+                clean_id = g_id.replace("_yes", "").replace("WHALE_", "")
                 with g_cols[j % 3]:
                     price = explorer_prices.get(g_id, 0)
                     st.markdown(f"""
-                    <div style='background:#161b22; padding:10px; border-radius:5px; border:1px solid #30363d; margin-bottom:10px;'>
-                        <p style='font-size:0.8em; color:#8b949e; margin:0;'>ID: {clean_id}</p>
-                        <p style='font-weight:bold; margin:0;'>PREÇO: ${price:.3f}</p>
+                    <div style='background:#1c2128; padding:8px; border-radius:5px; border:1px solid #444c56; margin-bottom:10px;'>
+                        <p style='font-size:0.75em; color:#8b949e; margin:0;'>WHALE ID: {clean_id}</p>
+                        <p style='font-weight:bold; margin:0; color:#aff5b4;'>PRICE: ${price:.3f}</p>
                     </div>
                     """, unsafe_allow_html=True)
     else:
-        st.info("Scanner aguardando próxima rodada de descoberta global...")
+        st.info("Scanner Whale Predator: Monitorando apostas de alto volume...")
 
     st.write("---")
     if os.path.exists("targets.json"):

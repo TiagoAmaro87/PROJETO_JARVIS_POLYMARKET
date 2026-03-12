@@ -74,6 +74,7 @@ class JarvisPolymarketStable:
         self.history_file = "wealth_history.json"
         self._last_discovery = 0
         self.discovered_targets: List[Dict] = []
+        self.explorer_prices: Dict[str, float] = {}
         
         # Load or init trade history
         if not os.path.exists(self.trades_file):
@@ -106,41 +107,46 @@ class JarvisPolymarketStable:
                 self.logger.error(f"[EXPLORER] Erro ao carregar targets: {e}")
 
     async def run_global_discovery(self):
-        """Busca novos mercados tendendo na Polymarket para o Scanner Global."""
+        """Busca mercados de alto volume (Whales) e distorções via Gamma API."""
         t_now = time.time()
         if t_now - self._last_discovery < 600: # A cada 10 minutos
             return
             
-        self.logger.info("[GLOBAL] Iniciando scanner de descoberta em toda a Polymarket...")
-        markets_resp = await self.core.get_active_markets()
+        self.logger.info("[WHALE] Rastreando Smart Money e fluxo de grandes apostas...")
+        trending = await self.core.get_trending_events()
         
-        valid_count = 0
         new_targets = []
-        
-        # O CLOB retorna {"data": [...], "next_cursor": ...}
-        markets = markets_resp.get("data", []) if isinstance(markets_resp, dict) else []
-        
-        for m in markets:
-            # Filtro de Liquidez e Validade
-            if not isinstance(m, dict): continue
-            q_id = m.get("condition_id")
-            tokens = m.get("tokens", [])
+        for event in trending:
+            # Pegamos o mercado principal de cada evento tendendo
+            markets = event.get("markets", [])
+            if not markets: continue
             
-            if len(tokens) >= 2 and q_id:
-                new_targets.append({
-                    "id": f"GLOBAL_{q_id[:8]}",
-                    "name": m.get("question", "Unknown Market"),
-                    "token_ids": {"yes": tokens[0].get("token_id"), "no": tokens[1].get("token_id")},
-                    "strategy": "sniper", # Estratégia padrão para novos mercados
-                    "threshold": 0.05,    # Buscar "bilhetes premiados"
-                    "max_investment": 10.0,
-                    "is_global": True
-                })
-                valid_count += 1
+            m = markets[0]
+            m_id = m.get("conditionId")
+            if not m_id: continue
+
+            # Determina o token YES (geralmente o primeiro da lista)
+            tokens = m.get("clobTokenIds", [])
+            if len(tokens) < 2: 
+                # Tenta formatar se for string única
+                y_id = m.get("clobTokenIds") 
+                if not isinstance(y_id, list): continue
+            else:
+                y_id, n_id = tokens[0], tokens[1]
+
+            new_targets.append({
+                "id": f"WHALE_{m_id[:8]}",
+                "name": m.get("question", event.get("title")),
+                "token_ids": {"yes": y_id, "no": n_id},
+                "strategy": "sniper",
+                "threshold": 0.15, # Gateway para o modo Global Hunter
+                "max_investment": 20.0,
+                "is_whale": True
+            })
         
         self.discovered_targets = new_targets
         self._last_discovery = t_now
-        self.logger.info(f"[GLOBAL] Scanner concluiu: {valid_count} novos mercados adicionados ao radar.")
+        self.logger.info(f"[WHALE] Scanner de Smart Money identificou {len(new_targets)} mercados de alto impacto.")
 
     def save_state(self):
         """Salva o progresso financeiro no disco."""
@@ -222,18 +228,24 @@ class JarvisPolymarketStable:
                     data["inventory"] = float(data["inventory"]) - float(res["amount"])
                     self.logger.info(f"[{name}] SENTIMENTO: LUCRO REAL")
 
-        # --- CAIXA 04: SNIPER ---
+        # --- CAIXA 04: SAFE GRINDER (FAVORITOS 95%+) ---
         elif name == "CAIXA_04_SNI":
             current_price = await self.core.get_real_price(data["token_id"])
-            if current_price < 0.10: # Contratos baratos
-                qty = 50.0
-                cost = current_price * qty * 1.001
-                if data["cash"] >= cost:
+            inv, cash = data["inventory"], data["cash"]
+            
+            # Grinding de baixo risco: Compra a 0.96 para vender a 0.98+
+            if current_price >= 0.95 and current_price < 0.97:
+                qty = 100.0 # Volume alto para compensar margem pequena
+                if cash >= (current_price * qty):
                     res = await self.core.execute_order(name, "buy", current_price, qty, data["token_id"])
-                    if res["status"] == "FILLED":
-                        data["cash"] = float(data["cash"]) - float(res["cost"])
-                        data["inventory"] = float(data["inventory"]) + float(res["amount"])
-                        self.logger.info(f"[{name}] 🔫 SNIPER DISPAROU!")
+                    data["cash"] = float(data["cash"]) - float(res["cost"])
+                    data["inventory"] = float(data["inventory"]) + float(res["amount"])
+                    self.logger.info(f"[{name}] SAFE GRIND: Compra em favorito 95%+")
+            elif current_price >= 0.985 and inv > 0:
+                res = await self.core.execute_order(name, "sell", current_price, inv, data["token_id"])
+                data["cash"] = float(data["cash"]) + float(res["cost"])
+                data["inventory"] = 0.0
+                self.logger.info(f"[{name}] SAFE GRIND: Lucro realizado (Grinding)")
 
         # --- ATUALIZAÇÃO PATRIMONIAL ---
         inv_v = float(data["inventory"]) * current_price
@@ -270,15 +282,33 @@ class JarvisPolymarketStable:
                 opp["roi"] = (opp["balance"] - opp["start"]) / opp["start"] if opp["start"] > 0 else 0
                 return
 
-            if y_p <= 0.05 and y_p > 0.005: 
+            # --- ESTRATÉGIA: GLOBAL HUNTER (AGRESSIVA) ---
+            # 1. Extreme Sniper: Preço baixo com potencial de valorização
+            if y_p <= 0.40 and y_p > 0.01: 
                 qty = 10.0 / y_p 
                 res = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, y_token)
                 self.active_opportunities[t_id] = {
-                    "name": f"🍀 {target['name'][:30]}...", 
+                    "name": f"HUNT: {target['name'][:30]}...", 
                     "cash": 0.0, "inventory": qty, "start": res["cost"], 
-                    "balance": res["cost"], "roi": 0.0, "strategy": "Extreme Sniper"
+                    "balance": res["cost"], "roi": 0.0, "strategy": "Hunter Sniper"
                 }
-                self.logger.info(f"🚀 [EXPONENCIAL] Bilhete Premiado Comprado ($10): {target['name']}")
+                self.logger.info(f"[HUNT] Oportunidade Detectada ($10): {target['name']} a ${y_p:.3f}")
+                return
+
+            # 2. Contrarian: Preço alto, aposta na queda
+            n_token = target["token_ids"].get("no")
+            if y_p >= 0.85 and n_token:
+                n_p = 1.0 - y_p
+                if n_p > 0.01:
+                    qty = 10.0 / n_p
+                    res = await self.core.execute_order(f"OPP_{t_id}", "buy", n_p, qty, n_token)
+                    self.active_opportunities[t_id] = {
+                        "name": f"CONTRA: {target['name'][:30]}...", 
+                        "cash": 0.0, "inventory": qty, "start": res["cost"], 
+                        "balance": res["cost"], "roi": 0.0, "strategy": "Global Contrarian"
+                    }
+                    self.logger.info(f"[HUNT] Reversao Detectada ($10): {target['name']} (YES a ${y_p:.3f})")
+                    return
             
             elif target.get("strategy") == "sniper" and y_p < target.get("threshold", 0.10):
                 qty = 10.0 / y_p
@@ -293,7 +323,6 @@ class JarvisPolymarketStable:
 
     async def run_explorer_scan(self):
         """Varre os alvos de forma paralela para não bloquear o loop principal."""
-        self.explorer_prices: Dict[str, float] = {}
         all_targets = self.explorer_targets + self.discovered_targets
         
         # Só varre o Global Hunter a cada 3 ticks para não sobrecarregar
