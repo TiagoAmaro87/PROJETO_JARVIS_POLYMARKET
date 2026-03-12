@@ -57,25 +57,44 @@ def load_data():
 
 data = load_data()
 
+# Processamento de Dados Global
+finance = {}
+active_opps = {}
+hw = {}
+
+if data:
+    hw = data.get("hardware", {})
+    payload = data.get("finance", {})
+    # Suporte legado e nova estrutura
+    if isinstance(payload, dict) and "finance" in payload and "active_opportunities" in payload:
+        finance = payload.get("finance", {})
+        active_opps = payload.get("active_opportunities", {})
+    else:
+        finance = payload
+
 # Abas do Dashboard
 tab_control, tab_active, tab_markets = st.tabs(["🚀 Mission Control", "⚡ Active Trades", "🔭 Market Explorer"])
 
 with tab_control:
     if data:
         # --- HEADER METRICS ---
-        hw = data.get("hardware", {})
-        finance = data.get("finance", {})
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        total_balance = sum([v["balance"] for v in finance.values()])
-        total_roi = (sum([v["balance"] for v in finance.values()]) / sum([v["start"] for v in finance.values()]) - 1) * 100
-        
-        col1.metric("🌍 TOTAL PATRIMÔNIO", f"${total_balance:,.2f}", f"{total_roi:.2f}%")
-        col2.metric("🌡️ GPU TEMP", f"{hw.get('gpu_temp', 0)}°C", delta_color="inverse")
-        col3.metric("🧠 CPU LOAD", f"{hw.get('cpu_load', 0)}%", delta_color="inverse")
-        col4.metric("📊 RAM USED", f"{hw.get('ram_used', 0)}%")
-        col5.metric("📡 STATUS", data.get("status", "STANDBY"), delta="LIVE")
+        try:
+            col1, col2, col3, col4, col5 = st.columns(5)
+            
+            # Cálculo seguro do balanço
+            caixas_list = [v for v in finance.values() if isinstance(v, dict) and "balance" in v]
+            total_balance = sum([v["balance"] for v in caixas_list])
+            total_start = sum([v["start"] for v in caixas_list])
+            total_roi = (total_balance / total_start - 1) * 100 if total_start > 0 else 0
+            
+            col1.metric("🌍 TOTAL PATRIMÔNIO", f"${total_balance:,.2f}", f"{total_roi:.2f}%")
+            col2.metric("🌡️ GPU TEMP", f"{hw.get('gpu_temp', 0)}°C", delta_color="inverse")
+            col3.metric("🧠 CPU LOAD", f"{hw.get('cpu_load', 0)}%", delta_color="inverse")
+            col4.metric("📊 RAM USED", f"{hw.get('ram_used', 0)}%")
+            col5.metric("📡 STATUS", data.get("status", "STANDBY"), delta="LIVE")
+        except Exception as e:
+            st.error(f"Erro ao processar métricas: {e}")
+            finance = {} # Previne erros nos loops abaixo
 
         st.markdown("### 🏦 Gestão das Caixas (Polymarket Turbo)")
     
@@ -173,8 +192,6 @@ with tab_control:
 with tab_active:
     st.markdown("### ⚡ Oportunidades Ativas")
     st.info("Monitoramento detalhado de mercados do Explorer que dispararam execução.")
-    
-    active_opps = data.get("active_opportunities", {})
     
     if active_opps:
         opp_cols = st.columns(3)
