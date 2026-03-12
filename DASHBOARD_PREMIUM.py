@@ -58,7 +58,7 @@ def load_data():
 data = load_data()
 
 # Abas do Dashboard
-tab_control, tab_markets = st.tabs(["🚀 Mission Control", "🔭 Market Explorer"])
+tab_control, tab_active, tab_markets = st.tabs(["🚀 Mission Control", "⚡ Active Trades", "🔭 Market Explorer"])
 
 with tab_control:
     if data:
@@ -168,6 +168,34 @@ with tab_control:
                 clean_lines = [l.strip() for l in lines[-10:] if l.strip()]
                 st.code("\n".join(clean_lines), language="log")
 
+
+
+with tab_active:
+    st.markdown("### ⚡ Oportunidades Ativas")
+    st.info("Monitoramento detalhado de mercados do Explorer que dispararam execução.")
+    
+    active_opps = data.get("active_opportunities", {})
+    
+    if active_opps:
+        opp_cols = st.columns(3)
+        for i, (name, d) in enumerate(active_opps.items()):
+            with opp_cols[i % 3]:
+                roi_val = d.get('roi', 0) * 100
+                st.markdown(f"""
+                <div class='status-card' style='border-color: #58a6ff;'>
+                    <h3 style='margin-top:0;'>🔥 {name}</h3>
+                    <p>Cash Alocado: <span style='color:white'>${d.get('cash', 0):.2f}</span></p>
+                    <p>Contratos: <span style='color:white'>{d.get('inventory', 0):.1f}</span></p>
+                    <p style='font-size:1.2em'>ROI: <span style='color:{"#3fb950" if roi_val >= 0 else "#f85149"}'>{roi_val:.2f}%</span></p>
+                    <small>Estratégia: {d.get('strategy', 'N/A')}</small>
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.write("---")
+        st.empty()
+        col_msg = st.columns([1, 2, 1])[1]
+        col_msg.warning("Nenhuma oportunidade do Explorer está em fase de execução ativa no momento.")
+        col_msg.info("O JARVIS continuará escaneando mercados na aba telescópio (Explorer).")
 
 with tab_markets:
     st.markdown("### 🔭 Market Explorer")
