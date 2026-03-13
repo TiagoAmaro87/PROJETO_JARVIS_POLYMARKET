@@ -28,7 +28,14 @@ except (AttributeError, io.UnsupportedOperation):
     pass
 
 # --- CONFIGURAÇÃO GLOBAL ---
-PAPER_TRADING = True 
+PAPER_TRADING = False 
+TRADING_ADDRESS = "0x05aaa06f5d08c307c307e9bf2b28990a5205c2b8".lower() # Conta Oficial (Aparece o nome JARVIS)
+
+# CREDENCIAIS CLOB (METAMASK)
+CLOB_API_KEY = "019ce41c-0e22-74ed-a9e5-8dbb92e0a7f6"
+CLOB_API_SECRET = "yuQm2U78o6k6-9qc6Q1j58ojTZAkMJym9SAlpJpH1rc="
+CLOB_API_PASSPHRASE = "349e31c9cc55af8f8673405d5a3069e586e2cab8200864dfc85052ebbadb8c69"
+
 TICK_RATE = 0.2 # Modo Turbo: 5Hz
 STATE_FILE = "jarvis_state.json"
 
@@ -40,24 +47,22 @@ class JarvisPolymarketStable:
         
         self.hw = HardwareEngine()
         self.brain = JarvisBrain()
-        self.core = PolymarketAsyncCore(paper_trading=PAPER_TRADING)
+        self.core = PolymarketAsyncCore(
+            paper_trading=PAPER_TRADING, 
+            trading_address=TRADING_ADDRESS,
+            api_key=CLOB_API_KEY,
+            api_secret=CLOB_API_SECRET,
+            api_passphrase=CLOB_API_PASSPHRASE
+        )
         self.pillars = TradingPillars(self.brain)
         self.telemetry = DailyHealthCheck(self.hw)
         
-        # Gestão de Capital - 4 Caixas
+        # Gestão de Capital - Consolidada em 1 CAIXA para $1.62 (MÃO LEVE REAL)
         self.caixas: Dict[str, Any] = {
-            "CAIXA_01_ARB": {
-                "cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, 
-                "active_index": 0,
-                "targets": [
-                    {"yes": "75467129615908319583031474642658885479135630431889036121812713428992454630178", "no": "3842963720267267286970642336860752782302644680156535061700039388405652129691"}, # BitBoy Convicted
-                    {"yes": "8501497159083948713316135768103773293754490207922884688769443031624417212426", "no": "2527312495175492857904889758552137141356236738032676480522356889996545113869"}, # RU-UK Ceasefire
-                    {"yes": "98022490269692409998126496127597032490334070080325855126491859374983463996227", "no": "53831553061883006530739877284105938919721408776239639687877978808906551086026"}  # Rihanna Album
-                ]
-            },
-            "CAIXA_02_MM":  {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "110251828161543119357013227499774714771527179764174739487025581227481937033858"},
-            "CAIXA_03_SENT": {"cash": 500.0, "inventory": 0.0, "start": 500.0, "balance": 500.0, "roi": 0.0, "token_id": "65176388692130651396848427090788038285140833850265294793449655516920659740141"},
-            "CAIXA_04_SNI":  {"cash": 40.0,  "inventory": 0.0, "start": 40.0,  "balance": 40.0,  "roi": 0.0, "token_id": "90435811253665578014957380826505992530054077692143838383981805324273750424057"}
+            "CAIXA_01_ARB": {"cash": 0.0, "inventory": 0.0, "start": 0.0, "balance": 0.0, "roi": 0.0, "active_index": 0, "targets": []},
+            "CAIXA_02_MM":  {"cash": 0.0, "inventory": 0.0, "start": 0.0, "balance": 0.0, "roi": 0.0, "token_id": "110251828161543119357013227499774714771527179764174739487025581227481937033858"},
+            "CAIXA_03_SENT": {"cash": 0.0, "inventory": 0.0, "start": 0.0, "balance": 0.0, "roi": 0.0, "token_id": "65176388692130651396848427090788038285140833850265294793449655516920659740141"},
+            "CAIXA_04_SNI":  {"cash": 1.62, "inventory": 0.0, "start": 1.62, "balance": 1.62, "roi": 0.0, "token_id": "90435811253665578014957380826505992530054077692143838383981805324273750424057"}
         }
 
         # Gestão de Oportunidades (Explorer -> Active Trades)
@@ -175,77 +180,71 @@ class JarvisPolymarketStable:
         start_compute = time.time()
         current_price = 0.5
 
-        # --- CAIXA 01: ARBITRAGEM (COMPLETAMENTE DESATIVADA) ---
+        # --- CAIXA 01: ARBITRAGEM (HABILITADA PARA TESTES) ---
         if name == "CAIXA_01_ARB":
-            self.logger.warning(f"[{name}] BLOQUEADA POR ORDEM DO USUÁRIO.")
+            if data["targets"]:
+                current_price = await self.core.get_real_price(data["targets"][0]["yes"])
             return 
 
         # --- CAIXA 02: MARKET MAKING ---
         elif name == "CAIXA_02_MM":
             current_price = await self.core.get_real_price(data["token_id"])
             inv, cash = data["inventory"], data["cash"]
-            qty = 100.0 # Aumentado para diluir GAS (Mão de $50-$100)
+            qty = 1.0 # Reduzido para teste de fluxo ($0.10 - $0.90)
 
-            if inv < 200:
+            if inv < 2:
                 buy_p = current_price * 0.998
-                # Simulação de viabilidade: spread deve ser > GAS
-                if (current_price - buy_p) * qty > (self.core.polygon_gas_price * 1.2):
-                    res = await self.core.execute_order(name, "buy", buy_p, qty, data["token_id"])
-                    if float(cash) >= float(res["cost"]):
+                # Checagem de saldo ANTES da execução real
+                if float(cash) >= (buy_p * qty):
+                    if (current_price - buy_p) * qty > (self.core.polygon_gas_price * 0.1): # Margem menor para teste
+                        res = await self.core.execute_order(name, "buy", buy_p, qty, data["token_id"])
                         data["cash"] = float(data["cash"]) - float(res["cost"])
                         data["inventory"] = float(data["inventory"]) + float(res["amount"])
-                        self.logger.info(f"[{name}] MM COMPRA EFICIENTE (Vol: {qty})")
+                        self.logger.info(f"[{name}] MM TESTE COMPRA (Vol: {qty})")
             elif inv >= qty:
                 sell_p = current_price * 1.012
-                if (sell_p - current_price) * qty > (self.core.polygon_gas_price * 2):
-                    res = await self.core.execute_order(name, "sell", sell_p, qty, data["token_id"])
-                    data["cash"] = float(data["cash"]) + float(res["cost"])
-                    data["inventory"] = float(data["inventory"]) - float(res["amount"])
-                    self.logger.info(f"[{name}] MM VENDA EFICIENTE (Lucro Real)")
-                    self.log_trade(name, "SELL_MM", res["cost"], res["amount"], data["token_id"])
+                res = await self.core.execute_order(name, "sell", sell_p, qty, data["token_id"])
+                data["cash"] = float(data["cash"]) + float(res["cost"])
+                data["inventory"] = float(data["inventory"]) - float(res["amount"])
+                self.logger.info(f"[{name}] MM TESTE VENDA")
 
         # --- CAIXA 03: SENTIMENTO ---
         elif name == "CAIXA_03_SENT":
             current_price = await self.core.get_real_price(data["token_id"])
             inv, cash = data["inventory"], data["cash"]
-            qty = 100.0 # Aumentado para eficiência de Gás
+            qty = 1.0
 
-            if random.random() > 0.4: # Mais agressivo para testes
-                if inv < 300:
-                    # Só entra se a tendência for forte e compensar o Gás
-                    profit_potential = (current_price * 0.005) * qty
-                    if profit_potential > (self.core.polygon_gas_price * 1.1):
+            if random.random() > 0.4:
+                if inv < 3:
+                    # Checagem de saldo ANTES
+                    if float(cash) >= (current_price * 1.001 * qty):
                         res = await self.core.execute_order(name, "buy", current_price * 1.001, qty, data["token_id"])
-                        if float(cash) >= float(res["cost"]):
-                            data["cash"] = float(data["cash"]) - float(res["cost"])
-                            data["inventory"] = float(data["inventory"]) + float(res["amount"])
-                            self.logger.info(f"[{name}] SENTIMENTO: ENTRADA EXECUTADA")
-                    else:
-                        self.logger.info(f"[{name}] Trade ignorado: Lucro est. ${profit_potential:.3f} < Gás")
+                        data["cash"] = float(data["cash"]) - float(res["cost"])
+                        data["inventory"] = float(data["inventory"]) + float(res["amount"])
+                        self.logger.info(f"[{name}] SENTIMENTO TESTE: ENTRADA")
                 elif inv >= qty:
                     res = await self.core.execute_order(name, "sell", current_price * 1.007, qty, data["token_id"])
                     data["cash"] = float(data["cash"]) + float(res["cost"])
                     data["inventory"] = float(data["inventory"]) - float(res["amount"])
-                    self.logger.info(f"[{name}] SENTIMENTO: LUCRO REAL")
+                    self.logger.info(f"[{name}] SENTIMENTO TESTE: SAIDA")
 
-        # --- CAIXA 04: SAFE GRINDER (FAVORITOS 95%+) ---
+        # --- CAIXA 04: SAFE GRINDER ---
         elif name == "CAIXA_04_SNI":
             current_price = await self.core.get_real_price(data["token_id"])
             inv, cash = data["inventory"], data["cash"]
             
-            # Grinding de baixo risco: Compra a 0.96 para vender a 0.98+
-            if current_price >= 0.95 and current_price < 0.97:
-                qty = 100.0 # Volume alto para compensar margem pequena
+            if current_price >= 0.90 and current_price < 0.98: # Threshold reduzido para $0.90
+                qty = 1.0
                 if cash >= (current_price * qty):
                     res = await self.core.execute_order(name, "buy", current_price, qty, data["token_id"])
                     data["cash"] = float(data["cash"]) - float(res["cost"])
                     data["inventory"] = float(data["inventory"]) + float(res["amount"])
-                    self.logger.info(f"[{name}] SAFE GRIND: Compra em favorito 95%+")
+                    self.logger.info(f"[{name}] GRINDER TESTE: COMPRA REALIZADA")
             elif current_price >= 0.985 and inv > 0:
                 res = await self.core.execute_order(name, "sell", current_price, inv, data["token_id"])
                 data["cash"] = float(data["cash"]) + float(res["cost"])
                 data["inventory"] = 0.0
-                self.logger.info(f"[{name}] SAFE GRIND: Lucro realizado (Grinding)")
+                self.logger.info(f"[{name}] GRINDER TESTE: VENDA")
 
         # --- ATUALIZAÇÃO PATRIMONIAL ---
         inv_v = float(data["inventory"]) * current_price
@@ -283,36 +282,42 @@ class JarvisPolymarketStable:
                 return
 
             # --- ESTRATÉGIA: GLOBAL HUNTER (AGRESSIVA) ---
+            total_cash = sum(c["cash"] for c in self.caixas.values())
+            
             # 1. Extreme Sniper: Preço baixo com potencial de valorização
-            if y_p <= 0.40 and y_p > 0.01: 
+            if y_p <= 0.40 and y_p > 0.01 and total_cash >= 10.0: 
                 qty = 10.0 / y_p 
                 res = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, y_token)
+                # Deduz do cash de uma caixa (ex: Sniper)
+                self.caixas["CAIXA_04_SNI"]["cash"] -= res["cost"]
                 self.active_opportunities[t_id] = {
                     "name": f"HUNT: {target['name'][:30]}...", 
                     "cash": 0.0, "inventory": qty, "start": res["cost"], 
                     "balance": res["cost"], "roi": 0.0, "strategy": "Hunter Sniper"
                 }
-                self.logger.info(f"[HUNT] Oportunidade Detectada ($10): {target['name']} a ${y_p:.3f}")
+                self.logger.info(f"[HUNT] Oportunidade Real Ativada ($10): {target['name']} a ${y_p:.3f}")
                 return
 
             # 2. Contrarian: Preço alto, aposta na queda
             n_token = target["token_ids"].get("no")
-            if y_p >= 0.85 and n_token:
+            if y_p >= 0.85 and n_token and total_cash >= 10.0:
                 n_p = 1.0 - y_p
                 if n_p > 0.01:
                     qty = 10.0 / n_p
                     res = await self.core.execute_order(f"OPP_{t_id}", "buy", n_p, qty, n_token)
+                    self.caixas["CAIXA_04_SNI"]["cash"] -= res["cost"]
                     self.active_opportunities[t_id] = {
                         "name": f"CONTRA: {target['name'][:30]}...", 
                         "cash": 0.0, "inventory": qty, "start": res["cost"], 
                         "balance": res["cost"], "roi": 0.0, "strategy": "Global Contrarian"
                     }
-                    self.logger.info(f"[HUNT] Reversao Detectada ($10): {target['name']} (YES a ${y_p:.3f})")
+                    self.logger.info(f"[HUNT] Reversao Real Ativada ($10): {target['name']} (YES a ${y_p:.3f})")
                     return
             
-            elif target.get("strategy") == "sniper" and y_p < target.get("threshold", 0.10):
+            elif target.get("strategy") == "sniper" and y_p < target.get("threshold", 0.10) and total_cash >= 10.0:
                 qty = 10.0 / y_p
                 res = await self.core.execute_order(f"OPP_{t_id}", "buy", y_p, qty, y_token)
+                self.caixas["CAIXA_04_SNI"]["cash"] -= res["cost"]
                 self.active_opportunities[t_id] = {
                     "name": target["name"], "cash": 0.0, "inventory": qty, 
                     "start": res["cost"], "balance": res["cost"], "roi": 0.0, "strategy": "Sniper"
@@ -383,7 +388,33 @@ class JarvisPolymarketStable:
 
     async def main_loop(self):
         self.is_running = True
-        self.logger.info(f"[BOOT] Jarvis {self.os_version} Inicializado com Sucesso.")
+        self.logger.info("--- [ JARVIS ULTRA-INSTINCT ENGINE STARTING ] ---")
+        self.logger.info(f"[MODE] Paper Trading: {PAPER_TRADING}")
+        self.logger.info(f"[WALLET] Endereço de Operação: {TRADING_ADDRESS}")
+        
+        if not PAPER_TRADING:
+            real_balance = await self.core.get_user_balance()
+            self.logger.info(f"[LIVE] Sincronizado com Polymarket. Saldo: ${real_balance:.2f} USDC.e")
+            
+            if real_balance > 0.01:
+                active_count = sum(1 for v in self.caixas.values() if v["start"] > 0)
+                if active_count == 0: active_count = 1
+                self.logger.info(f"[LIVE] SUCESSO! Distribuindo ${real_balance:.2f} entre as {active_count} caixas ativas.")
+                for name in self.caixas:
+                    if self.caixas[name]["start"] > 0:
+                        share = real_balance / active_count
+                        self.caixas[name]["cash"] = share
+                        self.caixas[name]["start"] = share
+                        self.caixas[name]["balance"] = share
+                    else:
+                        self.caixas[name]["cash"] = 0.0
+                        self.caixas[name]["balance"] = 0.0
+            else:
+                self.logger.warning("[LIVE] SALDO ZERADO detectado na conta. Verifique o Polymarket.")
+                for name in self.caixas:
+                    self.caixas[name]["cash"] = 0.0
+                    self.caixas[name]["start"] = 0.0
+                    self.caixas[name]["balance"] = 0.0
         
         while self.is_running:
             if not self.telemetry.check_system_viability(0):
@@ -411,11 +442,28 @@ class JarvisPolymarketStable:
                     "explorer_prices": self.explorer_prices,
                     "active_total": sum(opp["balance"] for opp in self.active_opportunities.values())
                 }
-                self.telemetry.export_dashboard_data(payload, self.core.latency_metrics, mode="POLYMARKET-TURBO")
+                self.telemetry.export_dashboard_data(payload, self.core.latency_metrics, mode="POLYMARKET-REAIS")
                 self._last_dash = t_now
                 
-            # Salva estado a cada 60 segundos
+            # Sincroniza saldo real com a Blockchain a cada 60 segundos
             if t_now % 60 == 0 and t_now != self._last_save:
+                if not PAPER_TRADING:
+                    real_b = await self.core.get_user_balance()
+                    # Se o saldo mudou significativamente (depósito ou saque), recalibra as caixas
+                    current_total = sum(v["balance"] for v in self.caixas.values())
+                    if abs(real_b - current_total) > 0.01:
+                        self.logger.info(f"[SYNC] Novo saldo rede: ${real_b:.2f}. Recalibrando caixas ativas...")
+                        active_count = sum(1 for v in self.caixas.values() if v["start"] > 0)
+                        if active_count == 0: active_count = 1
+                        for name in self.caixas:
+                            if self.caixas[name]["start"] > 0:
+                                self.caixas[name]["cash"] = real_b / active_count
+                                self.caixas[name]["start"] = real_b / active_count
+                                self.caixas[name]["balance"] = real_b / active_count
+                            else:
+                                self.caixas[name]["cash"] = 0.0
+                                self.caixas[name]["balance"] = 0.0
+                
                 self.save_state()
                 self.save_history() # Salva histórico junto com o estado
                 gc.collect()
