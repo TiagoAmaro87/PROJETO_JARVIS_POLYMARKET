@@ -5,11 +5,29 @@ import json
 from datetime import datetime
 from loguru import logger
 
+# Add Parent Dir to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from BOT_EXECUTION.polymarket_executor import PolymarketExecutor
+
 class PolymarketBrainV1:
     def __init__(self, dry_run=True):
         self.dry_run = dry_run
+        self.executor = PolymarketExecutor(dry_run=dry_run)
+        self.history_path = os.path.join(os.getcwd(), "logs", "trade_history.json")
+        self.last_trades = self._load_history()
         self.network_log_path = os.path.join(os.getcwd(), "logs", "agent_network.json")
         os.makedirs(os.path.dirname(self.network_log_path), exist_ok=True)
+
+    def _load_history(self):
+        if os.path.exists(self.history_path):
+            with open(self.history_path, "r") as f:
+                return json.load(f)
+        return []
+
+    def _save_history(self):
+        with open(self.history_path, "w") as f:
+            json.dump(self.last_trades, f)
 
     def _autonomous_scribe(self, summary: str):
         """Scribe Agent: Writes to Obsidian daily log automatically."""
@@ -37,13 +55,42 @@ class PolymarketBrainV1:
             logger.info("[GUARDIAN] Hourly Cloud Backup for Polymarket...")
             os.system(f"cd /d E:\\PROJETO_JARVIS_POLYMARKET && git add . && git commit -m \"AUTO-GUARDIAN: Polymarket Sync\" && git push origin main")
 
+    def _nexus_pulse(self, hype):
+        """Nexus Protocol: Shares hype with the Correlator."""
+        status_path = os.path.join(os.getcwd(), "logs", "poly_status.json")
+        os.makedirs(os.path.dirname(status_path), exist_ok=True)
+        with open(status_path, "w") as f:
+            json.dump({"hype": hype, "time": datetime.now().strftime("%H:%M:%S")}, f)
+
     def scan_clob(self):
-        """Scan Polymarket Order Book for Arbitrage."""
-        self._autonomous_scribe("Varredura Polymarket Realizada. Caçando Arbitragem Sum-to-one...")
+        """Scan Polymarket Order Book for Arbitrage and Whale Following."""
+        self._autonomous_scribe("Varredura Polymarket Realizada. Caçando rastros de Baleias...")
         self._autonomous_guardian()
+        self._nexus_pulse("BULLISH") # Simulated Hype
         
-        logger.info("[POLY-BRAIN] Scanning active prediction markets...")
-        # TODO: Implement py-clob-client calls
+        logger.info(f"[POLY-BRAIN] Hunting for Whale shadows... (History: {len(self.last_trades)} trades)")
+        whales = self.executor.get_whale_movements()
+        
+        for move in whales:
+            market = move["market"]
+            if market not in self.last_trades:
+                logger.warning(f"[EDGE-WHALE] Detected {move['whale']} in {market}!")
+                self.executor.execute_trade(market, move["side"], 100, whale_name=move["whale"])
+                self.last_trades.append(market)
+                self._save_history()
+                self._autonomous_scribe(f"ALINHAMENTO COM BALEIA: {move['whale']} em {market}.")
+
+        logger.info(f"[POLY-BRAIN] Hunting for Weekly Alpha... (Expiring < 48h)")
+        alphas = self.executor.get_weekly_alpha()
+        for alpha in alphas:
+            market = alpha["market"]
+            if market not in self.last_trades:
+                logger.success(f"[ALPHA-STRIKE] Leading Trader '{alpha['leader']}' found in {market} (Expires: {alpha['expires']})!")
+                self.executor.execute_trade(market, alpha["side"], 50, whale_name=f"ALPHA:{alpha['leader']}")
+                self.last_trades.append(market)
+                self._save_history()
+                self._autonomous_scribe(f"ATAQUE ALPHA: Seguindo {alpha['leader']} em mercado de curto prazo.")
+        
         time.sleep(2)
 
     def run(self):
