@@ -86,10 +86,21 @@ class PolymarketBrainV1:
             market = alpha["market"]
             if market not in self.last_trades:
                 logger.success(f"[ALPHA-STRIKE] Leading Trader '{alpha['leader']}' found in {market} (Expires: {alpha['expires']})!")
-                self.executor.execute_trade(market, alpha["side"], 75, whale_name=f"ALPHA:{alpha['leader']}") # Reinvesting: $50 -> $75
+                self.executor.execute_trade(market, alpha["side"], 75, whale_name=f"ALPHA:{alpha['leader']}")
                 self.last_trades.append(market)
                 self._save_history()
                 self._autonomous_scribe(f"ATAQUE ALPHA REINVESTIDO: Seguindo {alpha['leader']} com stake aumentado ($75).")
+
+        logger.info(f"[POLY-BRAIN] Hunting for Hot Hands (Snipers)... (High Velocity)")
+        snipers = self.executor.get_hot_hands()
+        for sniper in snipers:
+            market = sniper["market"]
+            if market not in self.last_trades:
+                logger.warning(f"[SNIPER-STRIKE] High Accuracy '{sniper['sniper']}' found in {market} (Expires: {sniper['expires']})!")
+                self.executor.execute_trade(market, sniper["side"], 30, whale_name=f"SNIPER:{sniper['sniper']}") # Giro de Capital: $30
+                self.last_trades.append(market)
+                self._save_history()
+                self._autonomous_scribe(f"ALVO SNIPER: Giro de capital seguindo {sniper['sniper']} em {market}.")
         
         time.sleep(2)
 

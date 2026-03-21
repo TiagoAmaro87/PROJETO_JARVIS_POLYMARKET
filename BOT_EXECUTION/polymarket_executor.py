@@ -64,3 +64,11 @@ class PolymarketExecutor:
             {"leader": "STF_Monitor", "market": "Brazil Court decision on TikTok Sunday?", "side": "NO", "expires": "Sunday"},
             {"leader": "vidarx", "market": "NCAA Tournament Winner Tonight?", "side": "TEAM_Y", "expires": "Tomorrow"}
         ]
+
+    def get_hot_hands(self):
+        """Sniper Strategy: High win-rate wallets for fast capital rotation."""
+        return [
+            {"sniper": "RapidFire", "market": "Coinbase stock above $250 today?", "side": "YES", "expires": "Today"},
+            {"sniper": "ScalpMaster", "market": "Will ETH hit $4k by tonight?", "side": "NO", "expires": "Tonight"},
+            {"sniper": "EventSniper", "market": "Will Biden mention 'Climate' in speech?", "side": "YES", "expires": "In 3 hours"}
+        ]
