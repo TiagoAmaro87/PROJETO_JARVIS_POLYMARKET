@@ -86,10 +86,10 @@ class PolymarketBrainV1:
             market = alpha["market"]
             if market not in self.last_trades:
                 logger.success(f"[ALPHA-STRIKE] Leading Trader '{alpha['leader']}' found in {market} (Expires: {alpha['expires']})!")
-                self.executor.execute_trade(market, alpha["side"], 50, whale_name=f"ALPHA:{alpha['leader']}")
+                self.executor.execute_trade(market, alpha["side"], 75, whale_name=f"ALPHA:{alpha['leader']}") # Reinvesting: $50 -> $75
                 self.last_trades.append(market)
                 self._save_history()
-                self._autonomous_scribe(f"ATAQUE ALPHA: Seguindo {alpha['leader']} em mercado de curto prazo.")
+                self._autonomous_scribe(f"ATAQUE ALPHA REINVESTIDO: Seguindo {alpha['leader']} com stake aumentado ($75).")
         
         time.sleep(2)
 
